@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BBK Stowage Planner Pro</title>
+    <meta name="description"
+        content="Professional 3D/2D visualization for Break Bulk cargo on 40-foot flat rack containers" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono&display=swap"
+        rel="stylesheet" />
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root {
+            --bg: #030712;
+            --panel: rgba(17, 24, 39, 0.8);
+            --panel-solid: #111827;
+            --border: rgba(59, 130, 246, 0.2);
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --accent2: #06b6d4;
+            --gold: #f59e0b;
+            --green: #10b981;
+            --red: #ef4444;
+            --text: #f3f4f6;
+            --muted: #9ca3af;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── HEADER ── */
+        header {
+            height: 60px;
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-shrink: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+
+        .logo-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        header h1 {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #60a5fa, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .v-tag {
+            font-family: 'JetBrains Mono';
+            font-size: 10px;
+            background: var(--border);
+            color: var(--accent2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+
+        .view-toggle {
+            display: flex;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .view-btn {
+            padding: 6px 18px;
+            border-radius: 7px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+            background: transparent;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .view-btn.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        }
+
+
+
+        .signature-final {
+            font-size: 28px;
+            font-weight: 950;
+            background: linear-gradient(to right, #fffbeb, #fbbf24, #f59e0b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+            margin-right: 32px;
+            white-space: nowrap;
+            filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.4));
+            display: inline-block;
+        }
+
+        /* ── MAIN ── */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+        }
+
+        /* ── LEFT PANEL ── */
+        .left-sidebar {
+            width: 360px;
+            background: var(--panel);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            z-index: 50;
+            flex-shrink: 0;
+        }
+
+        .left-sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .left-sidebar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        .section {
+            padding: 28px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sec-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .sec-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent2);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .sec-line {
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .grid-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .input-field {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .input-group label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 0.3px;
+            display: block;
+        }
+
+        .clr-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 5px;
+        }
+
+        .clr-picker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: none;
+            cursor: pointer;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        .clr-picker::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        .clr-picker::-webkit-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+
+        .clr-picker:hover {
+            transform: scale(1.1);
+            border-color: var(--accent);
+        }
+
+        .input-field input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            outline: none;
+            transition: all 0.2s;
+            width: 100px;
+            /* Reduced width by half */
+        }
+
+        .input-field input:focus {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.05);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .unit-label {
+            display: none;
+        }
+
+        .section {
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .orient-switch {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn-choice {
+            padding: 14px;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            background: var(--glass-bg);
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-choice.active {
+            border-color: var(--accent2);
+            color: var(--accent2);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .btn-subtext {
+            font-size: 11px;
+            opacity: 0.7;
+            font-weight: 400;
+            margin-top: 6px;
+            display: block;
+        }
+
+        .count-ctrl {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .circ-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 1.5px solid var(--border);
+            background: var(--glass-bg);
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .circ-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            transform: scale(1.1);
+        }
+
+        .count-num-box {
+            flex: 1;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 14px;
+            padding: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .num-main {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--accent);
+        }
+
+        .num-sub {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── VISUAL CANVAS AREA ── */
+        .canvas-wrapper {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+            background: #000;
+        }
+
+        #c3d,
+        #c2d {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #c2d {
+            display: none;
+        }
+
+        /* floating overlays */
+        .overlay-card {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        #summary-card {
+            top: 24px;
+            right: 24px;
+            width: 260px;
+            padding: 20px;
+        }
+
+        .card-h {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent2);
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .data-lbl {
+            color: var(--muted);
+        }
+
+        .data-val {
+            font-weight: 600;
+            font-family: 'JetBrains Mono';
+        }
+
+        #legend-box {
+            top: 20px;
+            left: 20px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .leg-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .leg-clr {
+            width: 16px;
+            height: 10px;
+            border-radius: 3px;
+        }
+
+        #hint-bubble {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 20px;
+            border-radius: 100px;
+            font-size: 11px;
+            color: var(--muted);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+        }
+
+        #hint-bubble b {
+            color: var(--accent2);
+        }
+
+        #m-diag {
+            aspect-ratio: 1.8;
+            margin-top: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+        }
+
+        .m-inner {
+            position: relative;
+            width: 60%;
+            height: 50%;
+            border: 1.5px dashed #444;
+        }
+
+        .m-bbk {
+            position: absolute;
+            inset: 15% 20%;
+            border: 2px solid var(--gold);
+            border-radius: 2px;
+        }
+
+        .m-val-label {
+            position: absolute;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--green);
+            white-space: nowrap;
+            font-family: 'JetBrains Mono';
+        }
+
+        .warn-box {
+            display: none;
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--red);
+            color: var(--red);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .warn-box.active {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo-box">
+            <div class="logo-icon">⚓</div>
+            <div>
+                <h1>BBK Stowage Planner Pro</h1>
+            </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="view-toggle">
+            <button class="view-btn active" id="btn3d" onclick="setView('3d')">3D VIEW</button>
+            <button class="view-btn" id="btn2d" onclick="setView('2d')">2D PLAN</button>
+        </div>
+        <div class="spacer" style="flex: 2;"></div>
+        <div class="signature-final">
+            THE END - YS KIM
+        </div>
+    </header>
+
+    <div class="main">
+        <div class="left-sidebar">
+            <!-- CARGO INFO -->
+            <div class="section">
+                <div class="sec-header"><span class="sec-title">Cargo Dimensions</span>
+                    <div class="sec-line"></div>
+                </div>
+                <div class="grid-inputs">
+                    <div class="input-field"><label>LENGTH (m)</label><input type="number" id="iL" value="10.0"
+                            min="0.1" step="0.1" oninput="uiUpdate()" /></div>
+                    <div class="input-field"><label>WIDTH (m)</label><input type="number" id="iW" value="4.0" min="0.1"
+                            step="0.1" oninput="uiUpdate()" /></div>
+                    <div class="input-field"><label>HEIGHT (m)</label><input type="number" id="iH" value="2.8" min="0.1"
+                            step="0.1" oninput="uiUpdate()" /></div>
+                    <div class="input-field"><label>WEIGHT (Ton)</label><input type="number" id="iWt" value="25.0"
+                            min="0.1" step="0.1" oninput="uiUpdate()" /></div>
+                </div>
+                <div id="warn" class="warn-box">⚠ CARGO EXCEEDS ARRANGEMENT</div>
+
+                <div class="input-field" style="margin-top:16px;">
+                    <label>Cargo Shape</label>
+                    <div class="orient-switch" style="grid-template-columns: 1fr 1fr; margin-top:5px;">
+                        <button class="btn-choice active" id="sBox" onclick="setShape('box')">BOX</button>
+                        <button class="btn-choice" id="sCyl" onclick="setShape('cylinder')">CYLINDER</button>
+                    </div>
+                </div>
+
+                <div class="input-field" style="margin-top:20px;">
+                    <label>Cargo Body Color</label>
+                    <div class="clr-picker-wrapper">
+                        <input type="color" id="iClr" value="#92400e" oninput="uiUpdate()" class="clr-picker">
+                        <span style="font-size:12px; color:var(--muted); font-weight:600;">Pick a specific tint</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ORIENTATION -->
+            <div class="section">
+                <div class="sec-header"><span class="sec-title">Loading Orientation</span>
+                    <div class="sec-line"></div>
+                </div>
+                <div class="orient-switch">
+                    <button class="btn-choice active" id="bAlong" onclick="setOrient('along')">
+                        ALONG SIDE
+                        <span class="btn-subtext">L Parallel to FR</span>
+                    </button>
+                    <button class="btn-choice" id="bAthw" onclick="setOrient('athwart')">
+                        ATHWARTSHIP
+                        <span class="btn-subtext">L Perpendicular</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- FR CONTROL -->
+            <div class="section">
+                <div class="sec-header"><span class="sec-title">Container Units</span>
+                    <div class="sec-line"></div>
+                </div>
+                <div class="count-ctrl">
+                    <button class="circ-btn" onclick="adjFR(-1)">-</button>
+                    <div class="count-num-box">
+                        <div class="num-main" id="frNum">?</div>
+                        <div class="num-sub">40FT Flat Racks</div>
+                    </div>
+                    <button class="circ-btn" onclick="adjFR(1)">+</button>
+                </div>
+            </div>
+
+            <!-- FR SPEC EDITOR -->
+            <div class="section">
+                <div class="sec-header"><span class="sec-title">40FR Unit Specifications</span>
+                    <div class="sec-line"></div>
+                </div>
+                <div class="grid-inputs" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <div class="input-field"><label>L (m)</label><input type="number" id="frL" step="0.001"
+                            oninput="uiUpdate()" /></div>
+                    <div class="input-field"><label>W (m)</label><input type="number" id="frW" step="0.001"
+                            oninput="uiUpdate()" /></div>
+                    <div class="input-field"><label>H (m)</label><input type="number" id="frH" step="0.001"
+                            oninput="uiUpdate()" /></div>
+                </div>
+            </div>
+
+            <!-- CLEARANCE MINI DIAGRAM -->
+            <div class="section" style="border-bottom:none">
+                <div class="sec-header"><span class="sec-title">Clearance Profile</span>
+                    <div class="sec-line"></div>
+                </div>
+                <div id="m-diag">
+                    <div class="m-inner">
+                        <div class="m-bbk"></div>
+                        <!-- Top: Outside and Centered -->
+                        <div class="m-val-label" style="top:-25px; left:50%; transform:translateX(-50%)" id="ml-top">?
+                        </div>
+                        <!-- Bottom: Outside and Centered -->
+                        <div class="m-val-label" style="bottom:-25px; left:50%; transform:translateX(-50%)" id="ml-btm">
+                            ?</div>
+                        <!-- Left: Outside and Centered -->
+                        <div class="m-val-label" style="left:-45px; top:50%; transform:translateY(-50%)" id="ml-lft">?
+                        </div>
+                        <!-- Right: Outside and Centered -->
+                        <div class="m-val-label" style="right:-45px; top:50%; transform:translateY(-50%)" id="ml-rgt">?
+                        </div>
+                    </div>
+                </div>
+                <div
+                    style="margin-top: 16px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
+                    <div class="data-row"><span class="data-lbl">Total Arrangement</span><span class="data-val"
+                            id="disp-total">?</span></div>
+                    <div class="data-row"><span class="data-lbl">Load per Unit</span><span class="data-val"
+                            id="disp-load">?</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-wrapper" id="canvas-wrapper">
+            <canvas id="c3d"></canvas>
+            <canvas id="c2d"></canvas>
+
+            <div id="legend-box" class="overlay-card">
+                <div class="leg-item">
+                    <div class="leg-clr" style="background:#1e40af; border:1px solid #3b82f6"></div> 40FT Flat Rack Unit
+                </div>
+                <div class="leg-item">
+                    <div class="leg-clr" style="background:#92400e; border:1px solid #f59e0b"></div> Break Bulk Cargo
+                </div>
+                <div class="leg-item">
+                    <div class="leg-clr" style="background:transparent; border:1.5px dashed #10b981"></div> Clearance
+                    Margin
+                </div>
+            </div>
+
+            <div id="summary-card" class="overlay-card">
+                <div class="card-h">BBK spec / Slot</div>
+                <div class="data-row"><span class="data-lbl">Dimensions</span><span class="data-val"
+                        id="s-dims">?</span></div>
+                <div class="data-row"><span class="data-lbl">Weight</span><span class="data-val" id="s-wt">?</span>
+                </div>
+                <div class="data-row"><span class="data-lbl">Orientation</span><span class="data-val"
+                        id="s-orient">?</span></div>
+                <div class="data-row"><span class="data-lbl">Units Required</span><span class="data-val"
+                        id="s-fr">?</span></div>
+                <div class="data-row" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border)">
+                    <span class="data-lbl" style="color:var(--red); font-weight:700">TOTAL SLOT KILL</span>
+                    <span class="data-val" id="s-kill" style="color:var(--red); font-size:16px">?</span>
+                </div>
+            </div>
+
+            <div class="cam-overlay">
+                <button class="reset-btn" onclick="resetCamera()">⟳ RE-CENTER VIEW</button>
+                <div class="badge"><b>Orbit:</b> Drag &nbsp;|&nbsp; <b>Zoom:</b> Scroll &nbsp;|&nbsp; <b>Pan:</b> Right
+                    Drag</div>
+            </div>
+            <div id="hint-bubble">Currently showing <b>3D DIGITAL TWIN</b></div>
+        </div>
+    </div>
+
+    <script>
+        /* ──────── STATE & PERSISTENCE ──────── */
+        let FR_SPEC = { L: 12.192, W: 2.438, H: 1.97 };
+        function loadFRSpec() {
+            const saved = localStorage.getItem('BBK_FR_SPEC');
+            if (saved) { try { FR_SPEC = JSON.parse(saved); } catch (e) { } }
+        }
+        function saveFRSpec() { localStorage.setItem('BBK_FR_SPEC', JSON.stringify(FR_SPEC)); }
+        loadFRSpec();
+        document.getElementById('frL').value = FR_SPEC.L;
+        document.getElementById('frW').value = FR_SPEC.W;
+        document.getElementById('frH').value = FR_SPEC.H;
+
+        const state = { view: '3d', orient: 'along', frManualCount: null, shape: 'box' };
+
+        /* ──────── THREE.JS CORE ──────── */
+        const cv3 = document.getElementById('c3d');
+        const renderer = new THREE.WebGLRenderer({ canvas: cv3, antialias: true, alpha: false });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setClearColor(0x030712);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 1000);
+        camera.position.set(20, 15, 25);
+
+        const controls = new THREE.OrbitControls(camera, cv3);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 5;
+        controls.maxDistance = 120;
+        controls.target.set(0, 2, 0);
+
+        // Lighting & Environment
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        mainLight.position.set(20, 40, 20);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.set(2048, 2048);
+        scene.add(mainLight);
+
+        const rimLight = new THREE.DirectionalLight(0x7fb3ff, 0.4);
+        rimLight.position.set(-20, 10, -20);
+        scene.add(rimLight);
+
+        const grid = new THREE.GridHelper(100, 50, 0x1e293b, 0x0f172a);
+        grid.position.y = -0.01;
+        scene.add(grid);
+
+        const grp = new THREE.Group();
+        scene.add(grp);
+
+        /* ──────── LOGIC ──────── */
+        function uiUpdate() {
+            const fl = parseFloat(document.getElementById('frL').value) || 12.192;
+            const fw = parseFloat(document.getElementById('frW').value) || 2.438;
+            const fh = parseFloat(document.getElementById('frH').value) || 1.97;
+            if (fl !== FR_SPEC.L || fw !== FR_SPEC.W || fh !== FR_SPEC.H) {
+                FR_SPEC = { L: fl, W: fw, H: fh };
+                saveFRSpec();
+            }
+
+            const L = getLayout();
+
+            document.getElementById('frNum').textContent = L.frCount;
+            document.getElementById('disp-total').textContent = `${L.totalLen.toFixed(2)} x ${L.totalWid.toFixed(2)} m`;
+            document.getElementById('disp-load').textContent = `${(L.wt / L.frCount).toFixed(1)} t / Unit`;
+
+            const warn = document.getElementById('warn');
+            if (L.isOL || L.isOW || L.isOH) {
+                warn.classList.add('active');
+                warn.textContent = `⚠ OOG DETECTED: ${L.isOL ? 'OL ' : ''}${L.isOW ? 'OW ' : ''}${L.isOH ? 'OH ' : ''}`;
+            } else {
+                warn.classList.remove('active');
+            }
+
+            document.getElementById('ml-top').textContent = `${L.gapW.toFixed(2)}m`;
+            document.getElementById('ml-btm').textContent = `${L.gapW.toFixed(2)}m`;
+            document.getElementById('ml-lft').textContent = `${L.gapL.toFixed(2)}m`;
+            document.getElementById('ml-rgt').textContent = `${L.gapL.toFixed(2)}m`;
+
+            document.getElementById('s-dims').textContent = `${L.bbkL}x${L.bbkW}x${L.bbkH}m`;
+            document.getElementById('s-wt').textContent = `${L.wt} t`;
+            document.getElementById('s-orient').textContent = L.orient === 'along' ? 'Along Side' : 'Athwartship';
+            document.getElementById('s-fr').textContent = `${L.frCount} Units`;
+            document.getElementById('s-kill').textContent = `${L.totalTEU} TEU`;
+
+            if (state.view === '3d') build3D(L);
+            else draw2D(L);
+        }
+
+        function getLayout() {
+            const bbkL = parseFloat(document.getElementById('iL').value) || 0.1;
+            const bbkW = parseFloat(document.getElementById('iW').value) || 0.1;
+            const bbkH = parseFloat(document.getElementById('iH').value) || 0.1;
+            const wt = parseFloat(document.getElementById('iWt').value) || 0;
+            const bbkColor = document.getElementById('iClr').value || "#92400e";
+
+            let targetLen = state.orient === 'along' ? bbkL : bbkW;
+            let targetWid = state.orient === 'along' ? bbkW : bbkL;
+
+            const autoFr = Math.max(1, Math.ceil(targetWid / FR_SPEC.W));
+            const frCount = state.frManualCount !== null ? state.frManualCount : autoFr;
+
+            const totalWid = frCount * FR_SPEC.W;
+            const totalLen = FR_SPEC.L;
+
+            const isOL = targetLen > FR_SPEC.L;
+            const isOW = targetWid > totalWid;
+            const isOH = bbkH > FR_SPEC.H;
+
+            // DYNAMIC SLOT KILL CALCULATION (Cover everything the cargo touches)
+            let killedSlots = [];
+            const tiers = Math.ceil(bbkH / FR_SPEC.H);
+            const xExtra = (targetLen - FR_SPEC.L) / 2;
+            const nx = xExtra > 0 ? Math.ceil(xExtra / FR_SPEC.L) : 0;
+            const zExtra = (targetWid - totalWid) / 2;
+            const nz = zExtra > 0 ? Math.ceil(zExtra / FR_SPEC.W) : 0;
+
+            for (let y = 0; y < tiers; y++) {
+                for (let x = -nx; x <= nx; x++) {
+                    for (let baseZ = 0; baseZ < frCount; baseZ++) {
+                        for (let oz = -nz; oz <= nz; oz++) {
+                            const z = baseZ + oz;
+                            if (!killedSlots.some(s => s.x === x && s.y === y && s.z === z)) {
+                                killedSlots.push({ x, y, z });
+                            }
+                        }
+                    }
+                }
+            }
+            const totalTEU = (killedSlots.length * 2);
+
+            return {
+                bbkL, bbkW, bbkH, wt, bbkColor,
+                shape: state.shape,
+                cargoAlong: targetLen,
+                cargoAcross: targetWid,
+                frCount, totalLen, totalWid,
+                gapL: (totalLen - targetLen) / 2,
+                gapW: (totalWid - targetWid) / 2,
+                orient: state.orient,
+                isOL, isOW, isOH, totalTEU, killedSlots
+            };
+        }
+
+        /* ──────── 3D RENDER ──────── */
+        function build3D(L) {
+            while (grp.children.length) grp.remove(grp.children[0]);
+            const BASE_H = 0.25;
+
+            for (let i = 0; i < L.frCount; i++) {
+                const geo = new THREE.BoxGeometry(FR_SPEC.L, BASE_H, FR_SPEC.W);
+                const mat = new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.5, metalness: 0.3 });
+                const mesh = new THREE.Mesh(geo, mat);
+                const z = (i - (L.frCount - 1) / 2) * FR_SPEC.W;
+                mesh.position.set(0, BASE_H / 2, z);
+                mesh.receiveShadow = true;
+                grp.add(mesh);
+                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x3b82f6 }));
+                edges.position.copy(mesh.position);
+                grp.add(edges);
+
+                // 40FR Unit Label on the floor (OUTSIDE Left-Center)
+                const labelPos = new THREE.Vector3(-(FR_SPEC.L / 2 + 1.6), BASE_H + 0.02, z);
+                addLabel(`40FR #${i + 1}`, labelPos, '#ffffff', 0.8, true, new THREE.Euler(-Math.PI / 2, 0, 0));
+            }
+
+            // SLOT KILL VISUALIZATION (Individual Bricks)
+            L.killedSlots.forEach(s => {
+                const geo = new THREE.BoxGeometry(FR_SPEC.L, FR_SPEC.H, FR_SPEC.W);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.12 });
+                const mesh = new THREE.Mesh(geo, mat);
+
+                const sx = s.x * FR_SPEC.L;
+                const sy = BASE_H + s.y * FR_SPEC.H + FR_SPEC.H / 2;
+                const sz = (s.z - (L.frCount - 1) / 2) * FR_SPEC.W;
+
+                mesh.position.set(sx, sy, sz);
+                grp.add(mesh);
+
+                // Bold Red Edges for "Brick" look
+                const eGeo = new THREE.EdgesGeometry(geo);
+                const eMat = new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 3 });
+                const edges = new THREE.LineSegments(eGeo, eMat);
+                edges.position.copy(mesh.position);
+                grp.add(edges);
+            });
+
+            let cMesh;
+            const cMat = new THREE.MeshStandardMaterial({
+                color: L.bbkColor,
+                roughness: 0.4,
+                metalness: 0.2,
+                emissive: L.bbkColor,
+                emissiveIntensity: 0.05
+            });
+
+            if (L.shape === 'cylinder') {
+                const cGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+                cMesh = new THREE.Mesh(cGeo, cMat);
+                cMesh.scale.set(L.cargoAlong, L.bbkH, L.cargoAcross);
+            } else {
+                const cGeo = new THREE.BoxGeometry(L.cargoAlong, L.bbkH, L.cargoAcross);
+                cMesh = new THREE.Mesh(cGeo, cMat);
+            }
+
+            cMesh.position.set(0, BASE_H + L.bbkH / 2, 0);
+            cMesh.castShadow = true;
+            grp.add(cMesh);
+
+            const cEdges = new THREE.LineSegments(
+                new THREE.EdgesGeometry(cMesh.geometry),
+                new THREE.LineBasicMaterial({ color: 0xf59e0b, linewidth: 2 })
+            );
+            if (L.shape === 'cylinder') cEdges.scale.copy(cMesh.scale);
+            cEdges.position.copy(cMesh.position);
+            grp.add(cEdges);
+
+            // 3D GAP INDICATORS & LINES (L, W, H)
+            const labelCol = '#10b981';
+            const midY = BASE_H + L.bbkH / 2;
+            const L_OFF = 0.45; // Label vertical offset from line
+
+            // L-Gap (Length)
+            if (L.gapL >= 0.05) {
+                const xPos = (L.cargoAlong / 2) + (L.gapL / 2);
+                addLabel(`${L.gapL.toFixed(2)}m`, new THREE.Vector3(xPos, midY + L_OFF, 0), labelCol, 0.4);
+                addLabel(`${L.gapL.toFixed(2)}m`, new THREE.Vector3(-xPos, midY + L_OFF, 0), labelCol, 0.4);
+                addGapLine(new THREE.Vector3(L.cargoAlong / 2, midY, 0), new THREE.Vector3(L.totalLen / 2, midY, 0));
+                addGapLine(new THREE.Vector3(-L.cargoAlong / 2, midY, 0), new THREE.Vector3(-L.totalLen / 2, midY, 0));
+            }
+
+            // W-Gap (Width)
+            if (L.gapW >= 0.05) {
+                const zPos = (L.cargoAcross / 2) + (L.gapW / 2);
+                addLabel(`${L.gapW.toFixed(2)}m`, new THREE.Vector3(0, midY + L_OFF, zPos), labelCol, 0.4);
+                addLabel(`${L.gapW.toFixed(2)}m`, new THREE.Vector3(0, midY + L_OFF, -zPos), labelCol, 0.4);
+                addGapLine(new THREE.Vector3(0, midY, L.cargoAcross / 2), new THREE.Vector3(0, midY, L.totalWid / 2));
+                addGapLine(new THREE.Vector3(0, midY, -L.cargoAcross / 2), new THREE.Vector3(0, midY, -L.totalWid / 2));
+            }
+
+            // H-Gap (Height / OH Gap - Upward dimension)
+            const maxOccupiedY = Math.max(...L.killedSlots.map(s => s.y), 0);
+            const slotCeilingH = (maxOccupiedY + 1) * FR_SPEC.H;
+            const ohGap = slotCeilingH - L.bbkH;
+
+            if (ohGap >= 0.05) {
+                const cargoTopY = BASE_H + L.bbkH;
+                const slotTopY = BASE_H + slotCeilingH;
+                const midGapY = cargoTopY + (ohGap / 2);
+
+                // Label for OH Gap
+                addLabel(`${ohGap.toFixed(2)}m`, new THREE.Vector3(0.6, midGapY, 0), labelCol, 0.4);
+
+                // Vertical Gap Line from Top face to Red Box ceiling
+                addGapLine(new THREE.Vector3(0, cargoTopY, 0), new THREE.Vector3(0, slotTopY, 0));
+            }
+        }
+
+        function addGapLine(p1, p2) {
+            const dist = p1.distanceTo(p2);
+            if (dist < 0.01) return;
+
+            const geo = new THREE.CylinderGeometry(0.015, 0.015, dist, 8);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+            const line = new THREE.Mesh(geo, mat);
+
+            const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+            line.position.copy(mid);
+            line.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+            grp.add(line);
+
+            // Add small dots at the contact points (Reverted to Spheres)
+            const dotGeo = new THREE.SphereGeometry(0.045, 12, 12);
+            const dotMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+            const d1 = new THREE.Mesh(dotGeo, dotMat); d1.position.copy(p1); grp.add(d1);
+            const d2 = new THREE.Mesh(dotGeo, dotMat); d2.position.copy(p2); grp.add(d2);
+        }
+
+        function addLabel(text, pos, color, scale, isSurface = false, rotation = null) {
+            const cv = document.createElement('canvas');
+            cv.width = 400; cv.height = 100;
+            const ctx = cv.getContext('2d');
+            ctx.clearRect(0, 0, 400, 100);
+
+            // Numeric text only with subtle glow for readability
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = color;
+            ctx.font = 'bold 44px Outfit, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 200, 50);
+            const tex = new THREE.CanvasTexture(cv);
+            tex.needsUpdate = true;
+
+            if (isSurface) {
+                const geo = new THREE.PlaneGeometry(4 * scale, 1 * scale);
+                const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthTest: true });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.copy(pos);
+                if (rotation) mesh.rotation.copy(rotation);
+                grp.add(mesh);
+            } else {
+                const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+                const spr = new THREE.Sprite(mat);
+                spr.scale.set(4 * scale, 1 * scale, 1);
+                spr.position.copy(pos);
+                grp.add(spr);
+            }
+        }
+
+        /* ──────── 2D RENDER ──────── */
+        const cv2 = document.getElementById('c2d');
+        const ctx2 = cv2.getContext('2d');
+
+        function draw2D(L) {
+            const W = cv2.clientWidth;
+            const H = cv2.clientHeight;
+            cv2.width = W; cv2.height = H;
+            ctx2.clearRect(0, 0, W, H);
+            const PAD = 100;
+            const scale = Math.min((W - PAD * 2) / L.totalLen, (H - PAD * 2) / L.totalWid, 50);
+            const ox = W / 2; const oy = H / 2;
+
+            for (let i = 0; i < L.frCount; i++) {
+                const zOffset = (i - (L.frCount - 1) / 2) * FR_SPEC.W;
+                const rx = ox - (FR_SPEC.L / 2) * scale;
+                const ry = oy + (zOffset - FR_SPEC.W / 2) * scale;
+                ctx2.fillStyle = '#1e40af'; ctx2.fillRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
+                ctx2.strokeStyle = '#3b82f6'; ctx2.lineWidth = 1; ctx2.strokeRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
+
+                // Lashing dots in 2D
+                ctx2.fillStyle = '#60a5fa';
+                [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(c => {
+                    ctx2.beginPath(); ctx2.arc(rx + (c[0] > 0 ? FR_SPEC.L - 0.3 : 0.3) * scale, ry + (c[1] > 0 ? FR_SPEC.W - 0.3 : 0.3) * scale, 2, 0, Math.PI * 2); ctx2.fill();
+                });
+            }
+
+            // SLOT KILL VISUALIZATION in 2D
+            L.killedSlots.forEach(s => {
+                const rx = ox + (s.x * FR_SPEC.L - FR_SPEC.L / 2) * scale;
+                const rzOffset = (s.z - (L.frCount - 1) / 2) * FR_SPEC.W;
+                const ry = oy + (rzOffset - FR_SPEC.W / 2) * scale;
+
+                ctx2.fillStyle = 'rgba(239, 68, 68, 0.15)';
+                ctx2.fillRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
+                ctx2.strokeStyle = '#ef4444'; ctx2.lineWidth = 1.5;
+                ctx2.strokeRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
+
+                // 40FR LABEL for base units (Outside Left-Center)
+                if (s.x === 0 && s.y === 0) {
+                    ctx2.fillStyle = '#ffffff';
+                    ctx2.font = 'bold 15px Outfit'; ctx2.textAlign = 'right'; ctx2.textBaseline = 'middle';
+                    ctx2.fillText(`40FR #${s.z + 1}`, rx - 15, ry + (FR_SPEC.W / 2) * scale);
+                }
+            });
+
+            const bx = ox - (L.cargoAlong / 2) * scale;
+            const by = oy - (L.cargoAcross / 2) * scale;
+            const bw = L.cargoAlong * scale;
+            const bh = L.cargoAcross * scale;
+
+            ctx2.fillStyle = L.bbkColor;
+            ctx2.globalAlpha = 0.9;
+            if (L.shape === 'cylinder') {
+                ctx2.beginPath();
+                ctx2.ellipse(ox, oy, bw / 2, bh / 2, 0, 0, Math.PI * 2);
+                ctx2.fill();
+            } else {
+                ctx2.fillRect(bx, by, bw, bh);
+            }
+            ctx2.globalAlpha = 1.0;
+            ctx2.strokeStyle = '#f59e0b'; ctx2.lineWidth = 2;
+            if (L.shape === 'cylinder') {
+                ctx2.beginPath();
+                ctx2.ellipse(ox, oy, bw / 2, bh / 2, 0, 0, Math.PI * 2);
+                ctx2.stroke();
+            } else {
+                ctx2.strokeRect(bx, by, bw, bh);
+            }
+
+            // CARGO LABEL INSIDE BODY
+            ctx2.font = `bold ${Math.max(13, 11 * scale)}px Outfit, sans-serif`;
+            ctx2.textAlign = 'center';
+            ctx2.textBaseline = 'middle';
+            ctx2.shadowColor = 'rgba(0,0,0,0.9)';
+            ctx2.shadowBlur = 4;
+            // CARGO LABEL INSIDE BODY
+            const fontSize = Math.min(14, bw / 10); // Dynamic but capped at 14px
+            if (bw > 40 && bh > 20) {
+                ctx2.font = `bold ${fontSize}px Outfit, sans-serif`;
+                ctx2.textAlign = 'center';
+                ctx2.textBaseline = 'middle';
+                ctx2.shadowBlur = 4;
+                ctx2.shadowColor = 'rgba(0,0,0,0.8)';
+
+                const l1 = `${L.bbkL} x ${L.bbkW} x ${L.bbkH} m`;
+                const l2 = `${L.wt} Ton`;
+
+                ctx2.strokeStyle = 'rgba(0,0,0,0.9)';
+                ctx2.lineWidth = 3;
+                ctx2.strokeText(l1, ox, oy - (fontSize * 0.6));
+                ctx2.strokeText(l2, ox, oy + (fontSize * 0.6));
+
+                ctx2.fillStyle = '#ffffff';
+                ctx2.fillText(l1, ox, oy - (fontSize * 0.6));
+                ctx2.fillText(l2, ox, oy + (fontSize * 0.6));
+            }
+            ctx2.shadowBlur = 0; // Reset shadow
+
+            // DIMENSION ARROWS (GAP/Clearance)
+            drawDimArrow(ox - (L.totalLen / 2) * scale, oy, bx, oy, L.gapL);
+            drawDimArrow(ox + (L.totalLen / 2) * scale, oy, bx + bw, oy, L.gapL);
+            drawDimArrow(ox, oy - (L.totalWid / 2) * scale, ox, by, L.gapW);
+            drawDimArrow(ox, oy + (L.totalWid / 2) * scale, ox, by + bh, L.gapW);
+        }
+
+        function drawDimArrow(x1, y1, x2, y2, val) {
+            if (val <= 0.05) return;
+            ctx2.strokeStyle = '#10b981'; ctx2.lineWidth = 1.5; ctx2.fillStyle = '#10b981';
+            // Line
+            ctx2.beginPath(); ctx2.moveTo(x1, y1); ctx2.lineTo(x2, y2); ctx2.stroke();
+
+            // Ticks/Arrows
+            const angle = Math.atan2(y2 - y1, x2 - x1);
+            [[x1, y1, angle], [x2, y2, angle + Math.PI]].forEach(p => {
+                ctx2.beginPath(); ctx2.moveTo(p[0], p[1]);
+                ctx2.lineTo(p[0] + 8 * Math.cos(p[2] - 0.5), p[1] + 8 * Math.sin(p[2] - 0.5));
+                ctx2.lineTo(p[0] + 8 * Math.cos(p[2] + 0.5), p[1] + 8 * Math.sin(p[2] + 0.5));
+                ctx2.fill();
+            });
+
+            // Label offset from middle (Above or Left)
+            const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+            ctx2.save();
+
+            if (Math.abs(x1 - x2) > Math.abs(y1 - y2)) {
+                // Horizontal (Length Gap) -> Above
+                ctx2.translate(mx, my - 12);
+            } else {
+                // Vertical (Width Gap) -> Left
+                ctx2.translate(mx - 20, my);
+                ctx2.rotate(-Math.PI / 2);
+            }
+
+            ctx2.fillStyle = '#10b981'; ctx2.font = 'bold 12px JetBrains Mono';
+            ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+            ctx2.shadowColor = 'rgba(0,0,0,0.8)'; ctx2.shadowBlur = 4;
+            ctx2.fillText(`${val.toFixed(2)}m`, 0, 0);
+            ctx2.restore();
+        }
+
+        /* ──────── APP CORE ──────── */
+        function setShape(s) {
+            state.shape = s;
+            document.getElementById('sBox').classList.toggle('active', s === 'box');
+            document.getElementById('sCyl').classList.toggle('active', s === 'cylinder');
+            uiUpdate();
+        }
+
+        function setView(v) {
+            state.view = v;
+            document.getElementById('btn3d').classList.toggle('active', v === '3d');
+            document.getElementById('btn2d').classList.toggle('active', v === '2d');
+            cv3.style.display = v === '3d' ? 'block' : 'none';
+            cv2.style.display = v === '2d' ? 'block' : 'none';
+            document.getElementById('hint-bubble').innerHTML = v === '3d' ? 'Currently showing <b>3D DIGITAL TWIN</b>' : 'Currently showing <b>TOP LOADING PLAN</b>';
+            uiUpdate();
+        }
+
+        function setOrient(o) {
+            state.orient = o; state.frManualCount = null;
+            document.getElementById('bAlong').classList.toggle('active', o === 'along');
+            document.getElementById('bAthw').classList.toggle('active', o === 'athwart');
+            uiUpdate();
+        }
+
+        function adjFR(d) {
+            const L = getLayout();
+            const base = state.frManualCount !== null ? state.frManualCount : L.frCount;
+            state.frManualCount = Math.max(1, base + d);
+            uiUpdate();
+        }
+
+        function resetCamera() {
+            camera.position.set(20, 15, 25);
+            controls.target.set(0, 2, 0);
+            controls.update();
+        }
+
+        function resize() {
+            const w = document.getElementById('canvas-wrapper').clientWidth;
+            const h = document.getElementById('canvas-wrapper').clientHeight;
+            renderer.setSize(w, h);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+        }
+
+        window.addEventListener('resize', () => { resize(); uiUpdate(); });
+
+        /* ──────── INIT ──────── */
+        resize();
+        uiUpdate();
+
+        (function anim() {
+            requestAnimationFrame(anim);
+            controls.update();
+            if (state.view === '3d') renderer.render(scene, camera);
+        })();
+    </script>
+</body>
+
+</html>
