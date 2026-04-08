@@ -144,6 +144,120 @@
             display: inline-block;
         }
 
+
+        /* Dynamic Cargo Row */
+        #cargo-list::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        #cargo-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        .cargo-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 80px;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 16px 10px 8px 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            position: relative;
+            box-sizing: border-box;
+            overflow: visible;
+        }
+
+        .cargo-row input {
+            width: 100% !important;
+            font-size: 12px !important;
+            padding: 5px 4px !important;
+            box-sizing: border-box !important;
+        }
+
+        .cargo-row label {
+            font-size: 9px !important;
+            margin-bottom: 2px !important;
+        }
+
+        .cargo-row-header {
+            position: absolute;
+            top: -8px;
+            left: 8px;
+            background: var(--panel);
+            font-size: 10px;
+            padding: 0 4px;
+            color: var(--accent2);
+            font-weight: bold;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .cargo-actions {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-end;
+            gap: 4px;
+            padding-bottom: 0px;
+            width: 60px;
+            /* Force small container width */
+        }
+
+        .btn-act {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
+            color: #fff;
+            border-radius: 0;
+            width: 16px;
+            height: 22px;
+            min-width: 16px;
+            max-height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            flex-shrink: 0;
+            line-height: 1;
+            box-sizing: border-box;
+        }
+
+        .btn-act:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .row-color {
+            width: 16px !important;
+            height: 22px !important;
+            min-width: 16px !important;
+            max-width: 16px !important;
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: 0;
+            cursor: pointer;
+            flex-shrink: 0;
+            appearance: none;
+            -webkit-appearance: none;
+            box-sizing: border-box;
+            background: transparent;
+        }
+
+        .row-color::-webkit-color-swatch-wrapper {
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+        }
+
+        .row-color::-webkit-color-swatch {
+            border: none;
+            border-radius: 0;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+        }
+
         /* ── MAIN ── */
         .main {
             display: flex;
@@ -154,7 +268,7 @@
 
         /* ── LEFT PANEL ── */
         .left-sidebar {
-            width: 360px;
+            width: 400px;
             background: var(--panel);
             backdrop-filter: blur(20px);
             border-right: 1px solid var(--border);
@@ -538,26 +652,35 @@
         </div>
         <div class="spacer" style="flex: 2;"></div>
         <div class="signature-final">
-            THE END - YS KIM
+            created by THE END - YS KIM
         </div>
     </header>
 
     <div class="main">
-        <div class="left-sidebar">
+        <div class="left-sidebar" id="sidebar">
             <!-- CARGO INFO -->
             <div class="section">
                 <div class="sec-header"><span class="sec-title">Cargo Dimensions</span>
                     <div class="sec-line"></div>
                 </div>
-                <div class="grid-inputs">
-                    <div class="input-field"><label>LENGTH (m)</label><input type="number" id="iL" value="10.0"
-                            min="0.1" step="0.1" oninput="uiUpdate()" /></div>
-                    <div class="input-field"><label>WIDTH (m)</label><input type="number" id="iW" value="4.0" min="0.1"
-                            step="0.1" oninput="uiUpdate()" /></div>
-                    <div class="input-field"><label>HEIGHT (m)</label><input type="number" id="iH" value="2.8" min="0.1"
-                            step="0.1" oninput="uiUpdate()" /></div>
-                    <div class="input-field"><label>WEIGHT (Ton)</label><input type="number" id="iWt" value="25.0"
-                            min="0.1" step="0.1" oninput="uiUpdate()" /></div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <label style="color: var(--accent2); font-size: 14px; font-weight:700;">Items List</label>
+                    <button class="btn-choice active" onclick="addCargoRow(-1)"
+                        style="padding:4px 10px; width:auto; font-size:12px;">+ ADD CARGO</button>
+                </div>
+
+                <div id="cargo-list"
+                    style="display:flex; flex-direction:column; gap:14px; max-height:260px; overflow-y:auto; padding-right:8px; margin-bottom: 16px; padding-top: 10px; margin-top: -4px;">
+                    <!-- JS fills this -->
+                </div>
+
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">🧲
+                        SNAP ALIGNMENT</label>
+                    <button class="btn-choice active" id="btn-snap"
+                        style="padding: 4px 12px; font-size: 11px; width: auto;" onclick="toggleSnap()">ON</button>
                 </div>
                 <div id="warn" class="warn-box">⚠ CARGO EXCEEDS ARRANGEMENT</div>
 
@@ -569,13 +692,7 @@
                     </div>
                 </div>
 
-                <div class="input-field" style="margin-top:20px;">
-                    <label>Cargo Body Color</label>
-                    <div class="clr-picker-wrapper">
-                        <input type="color" id="iClr" value="#92400e" oninput="uiUpdate()" class="clr-picker">
-                        <span style="font-size:12px; color:var(--muted); font-weight:600;">Pick a specific tint</span>
-                    </div>
-                </div>
+
             </div>
 
             <!-- ORIENTATION -->
@@ -633,6 +750,9 @@
                 <div id="m-diag">
                     <div class="m-inner">
                         <div class="m-bbk"></div>
+                        <div class="m-val-label"
+                            style="top:50%; left:50%; transform:translate(-50%, -50%); color:var(--green);" id="ml-cnt">
+                            ?</div>
                         <!-- Top: Outside and Centered -->
                         <div class="m-val-label" style="top:-25px; left:50%; transform:translateX(-50%)" id="ml-top">?
                         </div>
@@ -657,6 +777,10 @@
             </div>
         </div>
 
+        <div id="resizer"
+            style="width: 6px; background: var(--border); cursor: col-resize; z-index: 51; flex-shrink: 0; transition: background 0.2s;"
+            onmouseover="this.style.background='var(--accent2)'" onmouseout="this.style.background='var(--border)'">
+        </div>
         <div class="canvas-wrapper" id="canvas-wrapper">
             <canvas id="c3d"></canvas>
             <canvas id="c2d"></canvas>
@@ -674,19 +798,72 @@
                 </div>
             </div>
 
-            <div id="summary-card" class="overlay-card">
-                <div class="card-h">BBK spec / Slot</div>
-                <div class="data-row"><span class="data-lbl">Dimensions</span><span class="data-val"
-                        id="s-dims">?</span></div>
-                <div class="data-row"><span class="data-lbl">Weight</span><span class="data-val" id="s-wt">?</span>
+            <div class="right-overlays"
+                style="position: absolute; top: 24px; right: 24px; display: flex; flex-direction: column; gap: 16px; width: 260px; z-index: 10;">
+                <div id="summary-card" class="overlay-card" style="position: static; width: auto; padding: 20px;">
+                    <div class="card-h">BBK spec / Slot</div>
+                    <div class="data-row"><span class="data-lbl">Dimensions</span><span class="data-val"
+                            id="s-dims">?</span></div>
+                    <div class="data-row"><span class="data-lbl">Weight</span><span class="data-val" id="s-wt">?</span>
+                    </div>
+                    <div class="data-row"><span class="data-lbl">Orientation</span><span class="data-val"
+                            id="s-orient">?</span></div>
+                    <div class="data-row"><span class="data-lbl">Units Required</span><span class="data-val"
+                            id="s-fr">?</span></div>
+                    <div class="data-row" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border)">
+                        <span class="data-lbl" style="color:var(--red); font-weight:700">TOTAL SLOT KILL</span>
+                        <span class="data-val" id="s-kill" style="color:var(--red); font-size:16px">?</span>
+                    </div>
                 </div>
-                <div class="data-row"><span class="data-lbl">Orientation</span><span class="data-val"
-                        id="s-orient">?</span></div>
-                <div class="data-row"><span class="data-lbl">Units Required</span><span class="data-val"
-                        id="s-fr">?</span></div>
-                <div class="data-row" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border)">
-                    <span class="data-lbl" style="color:var(--red); font-weight:700">TOTAL SLOT KILL</span>
-                    <span class="data-val" id="s-kill" style="color:var(--red); font-size:16px">?</span>
+
+                <div id="camera-card" class="overlay-card" style="position: static; width: auto; padding: 20px;">
+                    <div class="card-h">Camera Controls</div>
+                    <button id="btn-auto-rotate" class="btn-choice"
+                        style="width: 100%; margin-bottom: 16px; font-size: 13px; font-weight: 800; border-color: var(--accent); display: flex; justify-content: center; align-items: center; gap: 8px;"
+                        onclick="toggleAutoRotate()">
+                        <span id="rotate-icon">▶</span> <span id="rotate-text">AUTO ROTATE : OFF</span>
+                    </button>
+
+                    <div id="rot-speed-ctrl"
+                        style="display: none; justify-content: space-between; align-items: center; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        <span
+                            style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">ROTATION
+                            SPEED</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button class="circ-btn" style="width: 24px; height: 24px; font-size: 12px;"
+                                onclick="adjustRotateSpeed(-0.5)">-</button>
+                            <span id="speed-val"
+                                style="font-size: 12px; font-weight: 700; color: var(--accent2); width: 24px; text-align: center;">1.0</span>
+                            <button class="circ-btn" style="width: 24px; height: 24px; font-size: 12px;"
+                                onclick="adjustRotateSpeed(0.5)">+</button>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div
+                            style="display: flex; flex-direction: column; align-items: center; background: var(--glass-bg); padding: 10px; border-radius: 10px; border: 1px solid var(--border);">
+                            <span
+                                style="font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.5px;">CAM
+                                ANGLE</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="circ-btn" style="width: 32px; height: 32px; font-size: 14px;"
+                                    onclick="adjustCameraHeight(-1)">▼</button>
+                                <button class="circ-btn" style="width: 32px; height: 32px; font-size: 14px;"
+                                    onclick="adjustCameraHeight(1)">▲</button>
+                            </div>
+                        </div>
+                        <div
+                            style="display: flex; flex-direction: column; align-items: center; background: var(--glass-bg); padding: 10px; border-radius: 10px; border: 1px solid var(--border);">
+                            <span
+                                style="font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.5px;">DISTANCE</span>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="circ-btn" style="width: 32px; height: 32px; font-size: 18px;"
+                                    onclick="adjustCameraDistance(-1)">+</button>
+                                <button class="circ-btn" style="width: 32px; height: 32px; font-size: 18px;"
+                                    onclick="adjustCameraDistance(1)">-</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -702,10 +879,7 @@
     <script>
         /* ──────── STATE & PERSISTENCE ──────── */
         let FR_SPEC = { L: 12.192, W: 2.438, H: 1.97 };
-        function loadFRSpec() {
-            const saved = localStorage.getItem('BBK_FR_SPEC');
-            if (saved) { try { FR_SPEC = JSON.parse(saved); } catch (e) { } }
-        }
+        function loadFRSpec() { const saved = localStorage.getItem('BBK_FR_SPEC'); if (saved) { try { FR_SPEC = JSON.parse(saved); } catch (e) { } } }
         function saveFRSpec() { localStorage.setItem('BBK_FR_SPEC', JSON.stringify(FR_SPEC)); }
         loadFRSpec();
         document.getElementById('frL').value = FR_SPEC.L;
@@ -713,6 +887,9 @@
         document.getElementById('frH').value = FR_SPEC.H;
 
         const state = { view: '3d', orient: 'along', frManualCount: null, shape: 'box' };
+
+        // Dynamic Cargo Data Array
+        let cargosData = [{ id: 0, L: 10.0, W: 4.0, H: 2.8, wt: 25.0, x: 0, z: 0 }];
 
         /* ──────── THREE.JS CORE ──────── */
         const cv3 = document.getElementById('c3d');
@@ -733,7 +910,6 @@
         controls.maxDistance = 120;
         controls.target.set(0, 2, 0);
 
-        // Lighting & Environment
         scene.add(new THREE.AmbientLight(0xffffff, 0.6));
         const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
         mainLight.position.set(20, 40, 20);
@@ -752,7 +928,212 @@
         const grp = new THREE.Group();
         scene.add(grp);
 
+        const snapGroup = new THREE.Group();
+        scene.add(snapGroup);
+
+        /* ──────── DRAG & DROP & SNAPPING ──────── */
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let dragObj = null;
+        let dragOffset = new THREE.Vector3();
+        let dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        let isDragging = false;
+
+        let dragObjIdx = -1; // track globally
+
+        cv3.addEventListener('pointerdown', e => {
+            const rect = cv3.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            // Collect all meshes that are flagged as CargoMesh
+            const intersectables = [];
+            grp.children.forEach(c => {
+                if (c.userData.isCargoGrp) {
+                    c.children.forEach(child => { if (child.userData.isCargoMesh) intersectables.push(child); });
+                }
+            });
+
+            const intersects = raycaster.intersectObjects(intersectables);
+            if (intersects.length > 0) {
+                controls.enabled = false;
+                dragObj = intersects[0].object.userData.parentGrp; // Extract the group
+                isDragging = true;
+                dragObjIdx = dragObj.userData.idx;
+
+                dragPlane.set(new THREE.Vector3(0, 1, 0), -dragObj.position.y);
+                raycaster.ray.intersectPlane(dragPlane, dragOffset);
+                dragOffset.sub(dragObj.position);
+            }
+        });
+
+        cv3.addEventListener('pointermove', e => {
+            if (!isDragging || !dragObj) return;
+            const rect = cv3.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const pt = new THREE.Vector3();
+            if (raycaster.ray.intersectPlane(dragPlane, pt)) {
+                let tgtX = pt.x - dragOffset.x;
+                let tgtZ = pt.z - dragOffset.z;
+
+                while (snapGroup.children.length) snapGroup.remove(snapGroup.children[0]);
+
+                if (isSnapEnabled) {
+                    let snappedX = false, snappedZ = false;
+                    const SNAP_DIST = 0.5;
+
+                    if (Math.abs(tgtX) < SNAP_DIST) { tgtX = 0; snappedX = true; drawSnapLine(new THREE.Vector3(0, 0, -50), new THREE.Vector3(0, 0, 50)); }
+                    if (Math.abs(tgtZ) < SNAP_DIST) { tgtZ = 0; snappedZ = true; drawSnapLine(new THREE.Vector3(-50, 0, 0), new THREE.Vector3(50, 0, 0)); }
+
+                    const cL = state.orient === 'along' ? dragObj.userData.cD.L : dragObj.userData.cD.W;
+                    const cW = state.orient === 'along' ? dragObj.userData.cD.W : dragObj.userData.cD.L;
+                    const myLeft = tgtX - cL / 2, myRight = tgtX + cL / 2;
+                    const myTop = tgtZ - cW / 2, myBottom = tgtZ + cW / 2;
+
+                    cargosData.forEach((c, idx) => {
+                        if (idx === dragObj.userData.idx) return;
+                        const oL = state.orient === 'along' ? c.L : c.W;
+                        const oW = state.orient === 'along' ? c.W : c.L;
+                        const oLeft = c.x - oL / 2, oRight = c.x + oL / 2;
+                        const oTop = c.z - oW / 2, oBottom = c.z + oW / 2;
+                        const oCenterX = c.x, oCenterZ = c.z;
+
+                        if (!snappedX) {
+                            if (Math.abs(tgtX - oCenterX) < SNAP_DIST) { tgtX = oCenterX; snappedX = true; drawSnapLine(new THREE.Vector3(tgtX, 0, -50), new THREE.Vector3(tgtX, 0, 50)); }
+                            else if (Math.abs(myLeft - oRight) < SNAP_DIST) { tgtX = oRight + cL / 2; snappedX = true; drawSnapLine(new THREE.Vector3(tgtX - cL / 2, 0, -50), new THREE.Vector3(tgtX - cL / 2, 0, 50)); }
+                            else if (Math.abs(myRight - oLeft) < SNAP_DIST) { tgtX = oLeft - cL / 2; snappedX = true; drawSnapLine(new THREE.Vector3(tgtX + cL / 2, 0, -50), new THREE.Vector3(tgtX + cL / 2, 0, 50)); }
+                            else if (Math.abs(myLeft - oLeft) < SNAP_DIST) { tgtX = oLeft + cL / 2; snappedX = true; drawSnapLine(new THREE.Vector3(tgtX - cL / 2, 0, -50), new THREE.Vector3(tgtX - cL / 2, 0, 50)); }
+                            else if (Math.abs(myRight - oRight) < SNAP_DIST) { tgtX = oRight - cL / 2; snappedX = true; drawSnapLine(new THREE.Vector3(tgtX + cL / 2, 0, -50), new THREE.Vector3(tgtX + cL / 2, 0, 50)); }
+                        }
+                        if (!snappedZ) {
+                            if (Math.abs(tgtZ - oCenterZ) < SNAP_DIST) { tgtZ = oCenterZ; snappedZ = true; drawSnapLine(new THREE.Vector3(-50, 0, tgtZ), new THREE.Vector3(50, 0, tgtZ)); }
+                            else if (Math.abs(myTop - oBottom) < SNAP_DIST) { tgtZ = oBottom + cW / 2; snappedZ = true; drawSnapLine(new THREE.Vector3(-50, 0, tgtZ - cW / 2), new THREE.Vector3(50, 0, tgtZ - cW / 2)); }
+                            else if (Math.abs(myBottom - oTop) < SNAP_DIST) { tgtZ = oTop - cW / 2; snappedZ = true; drawSnapLine(new THREE.Vector3(-50, 0, tgtZ + cW / 2), new THREE.Vector3(50, 0, tgtZ + cW / 2)); }
+                            else if (Math.abs(myTop - oTop) < SNAP_DIST) { tgtZ = oTop + cW / 2; snappedZ = true; drawSnapLine(new THREE.Vector3(-50, 0, tgtZ - cW / 2), new THREE.Vector3(50, 0, tgtZ - cW / 2)); }
+                            else if (Math.abs(myBottom - oBottom) < SNAP_DIST) { tgtZ = oBottom - cW / 2; snappedZ = true; drawSnapLine(new THREE.Vector3(-50, 0, tgtZ + cW / 2), new THREE.Vector3(50, 0, tgtZ + cW / 2)); }
+                        }
+                    });
+                }
+
+                // Commit to data immediately
+                cargosData[dragObjIdx].x = tgtX;
+                cargosData[dragObjIdx].z = tgtZ;
+
+                // Trigger full UI + layout + 3D update
+                uiUpdate();
+
+                // Recover the lost dragObj reference from the rebuilt scene!
+                let recovered = null;
+                grp.children.forEach(c => {
+                    if (c.userData.isCargoGrp && c.userData.idx === dragObjIdx) recovered = c;
+                });
+                if (recovered) {
+                    dragObj = recovered;
+                } else {
+                    isDragging = false; // fallback safety
+                }
+            }
+        });
+
+        cv3.addEventListener('pointerup', e => {
+            if (dragObj) {
+                controls.enabled = true;
+                dragObj = null;
+                dragObjIdx = -1;
+                isDragging = false;
+                while (snapGroup.children.length) snapGroup.remove(snapGroup.children[0]);
+                uiUpdate();
+            }
+        });
+
+        function drawSnapLine(p1, p2) {
+            const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+            const mat = new THREE.LineDashedMaterial({ color: 0x22d3ee, dashSize: 0.8, gapSize: 0.4 });
+            const line = new THREE.Line(geo, mat);
+            line.computeLineDistances();
+            line.position.y = 1.0;
+            snapGroup.add(line);
+        }
+
         /* ──────── LOGIC ──────── */
+        function addCargoRow(insertIdx) {
+            const newItem = { id: cargosData.length, L: 2.0, W: 2.0, H: 2.0, wt: 5.0, x: 0, z: 0, color: '#92400e' };
+            if (insertIdx === -1) {
+                cargosData.push(newItem);
+            } else {
+                cargosData.splice(insertIdx + 1, 0, newItem);
+            }
+            autoPlaceCargos();
+            renderCargoRows();
+            uiUpdate();
+        }
+
+        function removeCargoRow(idx) {
+            if (cargosData.length <= 1) return; // Leave at least one
+            cargosData.splice(idx, 1);
+            autoPlaceCargos();
+            renderCargoRows();
+            uiUpdate();
+        }
+
+        function updateColor(idx, col) {
+            cargosData[idx].color = col;
+            uiUpdate();
+        }
+
+        function renderCargoRows() {
+            const cont = document.getElementById('cargo-list');
+            cont.innerHTML = '';
+            cargosData.forEach((c, i) => {
+                const div = document.createElement('div');
+                div.className = 'cargo-row';
+                div.innerHTML = `
+                    <div class="cargo-row-header">Cargo #${i + 1}</div>
+                    <div class="input-field"><label>L (m)</label><input type="number" step="0.1" value="${c.L}" onchange="updateRow(${i},'L',this.value)" /></div>
+                    <div class="input-field"><label>W (m)</label><input type="number" step="0.1" value="${c.W}" onchange="updateRow(${i},'W',this.value)" /></div>
+                    <div class="input-field"><label>H (m)</label><input type="number" step="0.1" value="${c.H}" onchange="updateRow(${i},'H',this.value)" /></div>
+                    <div class="input-field"><label>Wt (t)</label><input type="number" step="0.1" value="${c.wt}" onchange="updateRow(${i},'wt',this.value)" /></div>
+                    <div class="cargo-actions">
+                        <button class="btn-act" onclick="addCargoRow(${i})" title="Add Item Below">+</button>
+                        <button class="btn-act" onclick="removeCargoRow(${i})" title="Delete Item">-</button>
+                        <input type="color" class="row-color" value="${c.color || '#92400e'}" onchange="updateColor(${i}, this.value)" title="Change Color" />
+                    </div>
+                `;
+                cont.appendChild(div);
+            });
+        }
+
+        function updateRow(idx, field, val) {
+            cargosData[idx][field] = parseFloat(val) || 0.1;
+            uiUpdate();
+        }
+
+        function autoPlaceCargos() {
+            if (cargosData.length === 1) {
+                cargosData[0].x = 0; cargosData[0].z = 0;
+            } else {
+                let totalL = 0;
+                cargosData.forEach(c => totalL += (state.orient === 'along' ? c.L : c.W));
+                const gap = 1.0;
+                let curX = - (totalL + gap * (cargosData.length - 1)) / 2;
+                cargosData.forEach(c => {
+                    const l = state.orient === 'along' ? c.L : c.W;
+                    c.x = curX + l / 2;
+                    c.z = 0;
+                    curX += l + gap;
+                });
+            }
+        }
+
+        window.addCargoRow = addCargoRow;
+        window.removeCargoRow = removeCargoRow;
+        window.updateColor = updateColor;
+        window.updateRow = updateRow;
+
         function uiUpdate() {
             const fl = parseFloat(document.getElementById('frL').value) || 12.192;
             const fw = parseFloat(document.getElementById('frW').value) || 2.438;
@@ -762,44 +1143,82 @@
                 saveFRSpec();
             }
 
-            const L = getLayout();
+            const LInfo = getLayout();
 
-            document.getElementById('frNum').textContent = L.frCount;
-            document.getElementById('disp-total').textContent = `${L.totalLen.toFixed(2)} x ${L.totalWid.toFixed(2)} m`;
-            document.getElementById('disp-load').textContent = `${(L.wt / L.frCount).toFixed(1)} t / Unit`;
+            document.getElementById('frNum').textContent = LInfo.frCount;
+            document.getElementById('disp-total').textContent = `${LInfo.totalLen.toFixed(2)} x ${LInfo.totalWid.toFixed(2)} m`;
+            document.getElementById('disp-load').textContent = `${(LInfo.totalWt / LInfo.frCount).toFixed(1)} t / Unit`;
 
             const warn = document.getElementById('warn');
-            if (L.isOL || L.isOW || L.isOH) {
+            if (LInfo.isOL || LInfo.isOW || LInfo.isOH) {
                 warn.classList.add('active');
-                warn.textContent = `⚠ OOG DETECTED: ${L.isOL ? 'OL ' : ''}${L.isOW ? 'OW ' : ''}${L.isOH ? 'OH ' : ''}`;
+                warn.textContent = `⚠ OOG DETECTED: ${LInfo.isOL ? 'OL ' : ''}${LInfo.isOW ? 'OW ' : ''}${LInfo.isOH ? 'OH ' : ''}`;
             } else {
                 warn.classList.remove('active');
             }
 
-            document.getElementById('ml-top').textContent = `${L.gapW.toFixed(2)}m`;
-            document.getElementById('ml-btm').textContent = `${L.gapW.toFixed(2)}m`;
-            document.getElementById('ml-lft').textContent = `${L.gapL.toFixed(2)}m`;
-            document.getElementById('ml-rgt').textContent = `${L.gapL.toFixed(2)}m`;
+            const setClrVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (val < -0.01) {
+                    el.textContent = `${val.toFixed(2)}m`;
+                    el.style.color = '#ef4444';
+                } else {
+                    el.textContent = `${val.toFixed(2)}m`;
+                    el.style.color = 'var(--green)';
+                }
+            };
+            setClrVal('ml-top', LInfo.gapTop);
+            setClrVal('ml-btm', LInfo.gapBottom);
+            setClrVal('ml-lft', LInfo.gapLeft);
+            setClrVal('ml-rgt', LInfo.gapRight);
 
-            document.getElementById('s-dims').textContent = `${L.bbkL}x${L.bbkW}x${L.bbkH}m`;
-            document.getElementById('s-wt').textContent = `${L.wt} t`;
-            document.getElementById('s-orient').textContent = L.orient === 'along' ? 'Along Side' : 'Athwartship';
-            document.getElementById('s-fr').textContent = `${L.frCount} Units`;
-            document.getElementById('s-kill').textContent = `${L.totalTEU} TEU`;
+            const tiers = Math.ceil(LInfo.bbkArrH / FR_SPEC.H);
+            const gapHeight = (tiers * FR_SPEC.H) - LInfo.bbkArrH;
+            const mlCnt = document.getElementById('ml-cnt');
+            if (mlCnt) {
+                if (gapHeight > 0.01) mlCnt.textContent = `↑ ${gapHeight.toFixed(2)}m`;
+                else mlCnt.textContent = ``;
+            }
 
-            if (state.view === '3d') build3D(L);
-            else draw2D(L);
+            document.getElementById('s-dims').textContent = `${LInfo.cargos.length > 1 ? 'Multiple (x' + LInfo.cargos.length + ')' : (LInfo.cargos[0].L + 'x' + LInfo.cargos[0].W + 'x' + LInfo.cargos[0].H + 'm')}`;
+            document.getElementById('s-wt').textContent = `${LInfo.totalWt.toFixed(1)} t`;
+            document.getElementById('s-orient').textContent = state.orient === 'along' ? 'Along Side' : 'Athwartship';
+            document.getElementById('s-fr').textContent = `${LInfo.frCount} Units`;
+            document.getElementById('s-kill').textContent = `${LInfo.totalTEU} TEU`;
+
+            if (state.view === '3d') build3D(LInfo);
+            else draw2D(LInfo);
         }
 
         function getLayout() {
-            const bbkL = parseFloat(document.getElementById('iL').value) || 0.1;
-            const bbkW = parseFloat(document.getElementById('iW').value) || 0.1;
-            const bbkH = parseFloat(document.getElementById('iH').value) || 0.1;
-            const wt = parseFloat(document.getElementById('iWt').value) || 0;
-            const bbkColor = document.getElementById('iClr').value || "#92400e";
+            const bbkColor = "#92400e";
 
-            let targetLen = state.orient === 'along' ? bbkL : bbkW;
-            let targetWid = state.orient === 'along' ? bbkW : bbkL;
+            let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxH = 0;
+            let totalWt = 0;
+            let extZMinX = 0, extZMaxX = 0, extXMinZ = 0, extXMaxZ = 0;
+
+            if (cargosData.length === 0) {
+                minX = 0; maxX = 0; minZ = 0; maxZ = 0; maxH = 0;
+            } else {
+                cargosData.forEach(c => {
+                    const len = state.orient === 'along' ? c.L : c.W;
+                    const wid = state.orient === 'along' ? c.W : c.L;
+                    if (c.x - len / 2 < minX) { minX = c.x - len / 2; extZMinX = c.z; }
+                    if (c.x + len / 2 > maxX) { maxX = c.x + len / 2; extZMaxX = c.z; }
+                    if (c.z - wid / 2 < minZ) { minZ = c.z - wid / 2; extXMinZ = c.x; }
+                    if (c.z + wid / 2 > maxZ) { maxZ = c.z + wid / 2; extXMaxZ = c.x; }
+                    maxH = Math.max(maxH, c.H);
+                    totalWt += c.wt;
+                });
+            }
+
+            const bbkArrL = maxX - minX;
+            const bbkArrW = maxZ - minZ;
+            const bbkArrH = maxH;
+
+            const targetLen = bbkArrL;
+            const targetWid = bbkArrW;
 
             const autoFr = Math.max(1, Math.ceil(targetWid / FR_SPEC.W));
             const frCount = state.frManualCount !== null ? state.frManualCount : autoFr;
@@ -809,38 +1228,58 @@
 
             const isOL = targetLen > FR_SPEC.L;
             const isOW = targetWid > totalWid;
-            const isOH = bbkH > FR_SPEC.H;
+            const isOH = bbkArrH > FR_SPEC.H;
 
-            // DYNAMIC SLOT KILL CALCULATION (Cover everything the cargo touches)
+            const gapLeft = minX - (-totalLen / 2);
+            const gapRight = (totalLen / 2) - maxX;
+            // negative z is top visually, but coordinate wise it acts as Y in 2D
+            const gapTop = minZ - (-totalWid / 2);
+            const gapBottom = (totalWid / 2) - maxZ;
+
             let killedSlots = [];
-            const tiers = Math.ceil(bbkH / FR_SPEC.H);
-            const xExtra = (targetLen - FR_SPEC.L) / 2;
-            const nx = xExtra > 0 ? Math.ceil(xExtra / FR_SPEC.L) : 0;
-            const zExtra = (targetWid - totalWid) / 2;
-            const nz = zExtra > 0 ? Math.ceil(zExtra / FR_SPEC.W) : 0;
+            // Base FR physical slots first
+            for (let baseZ = 0; baseZ < frCount; baseZ++) {
+                killedSlots.push({ x: 0, y: 0, z: baseZ });
+            }
 
-            for (let y = 0; y < tiers; y++) {
-                for (let x = -nx; x <= nx; x++) {
-                    for (let baseZ = 0; baseZ < frCount; baseZ++) {
-                        for (let oz = -nz; oz <= nz; oz++) {
-                            const z = baseZ + oz;
-                            if (!killedSlots.some(s => s.x === x && s.y === y && s.z === z)) {
-                                killedSlots.push({ x, y, z });
+            cargosData.forEach(c => {
+                const cL = state.orient === 'along' ? c.L : c.W;
+                const cW = state.orient === 'along' ? c.W : c.L;
+
+                const c_minX = c.x - cL / 2;
+                const c_maxX = c.x + cL / 2;
+                const c_minZ = c.z - cW / 2;
+                const c_maxZ = c.z + cW / 2;
+
+                const minSx = Math.floor(c_minX / FR_SPEC.L + 0.5 + 0.001);
+                const maxSx = Math.floor(c_maxX / FR_SPEC.L + 0.5 - 0.001);
+
+                const tiers = Math.ceil(c.H / FR_SPEC.H);
+
+                const minSz = Math.floor(c_minZ / FR_SPEC.W + (frCount - 1) / 2 + 0.5 + 0.001);
+                const maxSz = Math.floor(c_maxZ / FR_SPEC.W + (frCount - 1) / 2 + 0.5 - 0.001);
+
+                for (let y = 0; y < tiers; y++) {
+                    for (let sx = minSx; sx <= maxSx; sx++) {
+                        for (let sz = minSz; sz <= maxSz; sz++) {
+                            if (!killedSlots.some(s => s.x === sx && s.y === y && s.z === sz)) {
+                                killedSlots.push({ x: sx, y: y, z: sz });
                             }
                         }
                     }
                 }
-            }
+            });
+
             const totalTEU = (killedSlots.length * 2);
 
             return {
-                bbkL, bbkW, bbkH, wt, bbkColor,
-                shape: state.shape,
-                cargoAlong: targetLen,
-                cargoAcross: targetWid,
+                cargos: cargosData,
+                bbkColor, shape: state.shape,
+                bbkArrL, bbkArrW, bbkArrH, totalWt,
                 frCount, totalLen, totalWid,
-                gapL: (totalLen - targetLen) / 2,
-                gapW: (totalWid - targetWid) / 2,
+                gapLeft, gapRight, gapTop, gapBottom,
+                extZMinX, extZMaxX, extXMinZ, extXMaxZ,
+                minX, maxX, minZ, maxZ,
                 orient: state.orient,
                 isOL, isOW, isOH, totalTEU, killedSlots
             };
@@ -851,6 +1290,7 @@
             while (grp.children.length) grp.remove(grp.children[0]);
             const BASE_H = 0.25;
 
+            // Base FRs
             for (let i = 0; i < L.frCount; i++) {
                 const geo = new THREE.BoxGeometry(FR_SPEC.L, BASE_H, FR_SPEC.W);
                 const mat = new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.5, metalness: 0.3 });
@@ -862,122 +1302,212 @@
                 const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x3b82f6 }));
                 edges.position.copy(mesh.position);
                 grp.add(edges);
-
-                // 40FR Unit Label on the floor (OUTSIDE Left-Center)
                 const labelPos = new THREE.Vector3(-(FR_SPEC.L / 2 + 1.6), BASE_H + 0.02, z);
                 addLabel(`40FR #${i + 1}`, labelPos, '#ffffff', 0.8, true, new THREE.Euler(-Math.PI / 2, 0, 0));
             }
 
-            // SLOT KILL VISUALIZATION (Individual Bricks)
+            // Slot Kills
             L.killedSlots.forEach(s => {
                 const geo = new THREE.BoxGeometry(FR_SPEC.L, FR_SPEC.H, FR_SPEC.W);
                 const mat = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.12 });
                 const mesh = new THREE.Mesh(geo, mat);
-
                 const sx = s.x * FR_SPEC.L;
                 const sy = BASE_H + s.y * FR_SPEC.H + FR_SPEC.H / 2;
                 const sz = (s.z - (L.frCount - 1) / 2) * FR_SPEC.W;
-
                 mesh.position.set(sx, sy, sz);
                 grp.add(mesh);
-
-                // Bold Red Edges for "Brick" look
-                const eGeo = new THREE.EdgesGeometry(geo);
-                const eMat = new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 3 });
-                const edges = new THREE.LineSegments(eGeo, eMat);
+                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 3 }));
                 edges.position.copy(mesh.position);
                 grp.add(edges);
             });
 
-            let cMesh;
-            const cMat = new THREE.MeshStandardMaterial({
-                color: L.bbkColor,
-                roughness: 0.4,
-                metalness: 0.2,
-                emissive: L.bbkColor,
-                emissiveIntensity: 0.05
+            // Cargos Grouping
+            const allBounds = L.cargos.map(oc => { const oL = L.orient === "along" ? oc.L : oc.W; const oW = L.orient === "along" ? oc.W : oc.L; return { left: oc.x - oL / 2, right: oc.x + oL / 2, top: oc.z - oW / 2, bottom: oc.z + oW / 2, id: oc.id }; });
+            L.cargos.forEach((c, idx) => {
+                const cGrp = new THREE.Group();
+                cGrp.position.set(c.x, BASE_H + c.H / 2, c.z);
+                cGrp.userData = { isCargoGrp: true, idx: idx, cD: c };
+
+                const cL = L.orient === 'along' ? c.L : c.W;
+                const cW = L.orient === 'along' ? c.W : c.L;
+                const cMat = new THREE.MeshStandardMaterial({
+                    color: c.color || L.bbkColor, roughness: 0.4, metalness: 0.2, emissive: c.color || L.bbkColor, emissiveIntensity: 0.05
+                });
+
+                let cGeo;
+                if (L.shape === 'cylinder') cGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+                else cGeo = new THREE.BoxGeometry(1, 1, 1);
+
+                const cMesh = new THREE.Mesh(cGeo, cMat);
+                cMesh.scale.set(cL, c.H, cW);
+                cMesh.castShadow = true;
+                cMesh.userData = { isCargoMesh: true, parentGrp: cGrp }; // pointer for raycaster to find parent group easily
+                cGrp.add(cMesh);
+
+                const cEdges = new THREE.LineSegments(
+                    new THREE.EdgesGeometry(cGeo),
+                    new THREE.LineBasicMaterial({ color: 0xf59e0b, linewidth: 2 })
+                );
+                cEdges.scale.copy(cMesh.scale);
+                cGrp.add(cEdges);
+
+                // create label and add to cGrp explicitly
+                const cv = document.createElement('canvas');
+                cv.width = 120; cv.height = 40;
+                const ctx = cv.getContext('2d');
+                ctx.clearRect(0, 0, 120, 40);
+                ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 4;
+                ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 24px Outfit, sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(`[${idx + 1}]`, 60, 20);
+                const tex = new THREE.CanvasTexture(cv); tex.needsUpdate = true;
+                const sMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+                const spr = new THREE.Sprite(sMat);
+                spr.scale.set(1.2, 0.4, 1); // approximate 400x100 ratio
+                spr.position.set(0, c.H / 2 + 0.3, 0);
+                cGrp.add(spr);
+
+                grp.add(cGrp);
             });
 
-            if (L.shape === 'cylinder') {
-                const cGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
-                cMesh = new THREE.Mesh(cGeo, cMat);
-                cMesh.scale.set(L.cargoAlong, L.bbkH, L.cargoAcross);
-            } else {
-                const cGeo = new THREE.BoxGeometry(L.cargoAlong, L.bbkH, L.cargoAcross);
-                cMesh = new THREE.Mesh(cGeo, cMat);
-            }
 
-            cMesh.position.set(0, BASE_H + L.bbkH / 2, 0);
-            cMesh.castShadow = true;
-            grp.add(cMesh);
 
-            const cEdges = new THREE.LineSegments(
-                new THREE.EdgesGeometry(cMesh.geometry),
-                new THREE.LineBasicMaterial({ color: 0xf59e0b, linewidth: 2 })
-            );
-            if (L.shape === 'cylinder') cEdges.scale.copy(cMesh.scale);
-            cEdges.position.copy(cMesh.position);
-            grp.add(cEdges);
-
-            // 3D GAP INDICATORS & LINES (L, W, H)
             const labelCol = '#10b981';
-            const midY = BASE_H + L.bbkH / 2;
-            const L_OFF = 0.45; // Label vertical offset from line
+            const midY = BASE_H + 0.5;
 
-            // L-Gap (Length)
-            if (L.gapL >= 0.05) {
-                const xPos = (L.cargoAlong / 2) + (L.gapL / 2);
-                addLabel(`${L.gapL.toFixed(2)}m`, new THREE.Vector3(xPos, midY + L_OFF, 0), labelCol, 0.4);
-                addLabel(`${L.gapL.toFixed(2)}m`, new THREE.Vector3(-xPos, midY + L_OFF, 0), labelCol, 0.4);
-                addGapLine(new THREE.Vector3(L.cargoAlong / 2, midY, 0), new THREE.Vector3(L.totalLen / 2, midY, 0));
-                addGapLine(new THREE.Vector3(-L.cargoAlong / 2, midY, 0), new THREE.Vector3(-L.totalLen / 2, midY, 0));
-            }
 
-            // W-Gap (Width)
-            if (L.gapW >= 0.05) {
-                const zPos = (L.cargoAcross / 2) + (L.gapW / 2);
-                addLabel(`${L.gapW.toFixed(2)}m`, new THREE.Vector3(0, midY + L_OFF, zPos), labelCol, 0.4);
-                addLabel(`${L.gapW.toFixed(2)}m`, new THREE.Vector3(0, midY + L_OFF, -zPos), labelCol, 0.4);
-                addGapLine(new THREE.Vector3(0, midY, L.cargoAcross / 2), new THREE.Vector3(0, midY, L.totalWid / 2));
-                addGapLine(new THREE.Vector3(0, midY, -L.cargoAcross / 2), new THREE.Vector3(0, midY, -L.totalWid / 2));
-            }
+            const tiers3D = Math.ceil(L.bbkArrH / FR_SPEC.H);
+            const slotCeiling = BASE_H + tiers3D * FR_SPEC.H;
 
-            // H-Gap (Height / OH Gap - Upward dimension)
-            const maxOccupiedY = Math.max(...L.killedSlots.map(s => s.y), 0);
-            const slotCeilingH = (maxOccupiedY + 1) * FR_SPEC.H;
-            const ohGap = slotCeilingH - L.bbkH;
+            L.cargos.forEach((c, idx) => {
+                // Overhead clearance per cargo
+                const c_cargoTopY = BASE_H + c.H;
+                const c_gapY = slotCeiling - c_cargoTopY;
+                if (c_gapY > 0.05) {
+                    addGapLine(new THREE.Vector3(c.x, c_cargoTopY, c.z), new THREE.Vector3(c.x, slotCeiling, c.z));
+                    addLabel(`${c_gapY.toFixed(2)}m`, new THREE.Vector3(c.x + 0.15, c_cargoTopY + c_gapY / 2, c.z + 0.15), labelCol, 0.35);
+                }
 
-            if (ohGap >= 0.05) {
-                const cargoTopY = BASE_H + L.bbkH;
-                const slotTopY = BASE_H + slotCeilingH;
-                const midGapY = cargoTopY + (ohGap / 2);
+                // Smart Visibility-based distances (Centered on min cargo face)
+                const myB = allBounds[idx];
+                const myVol = c.L * c.W * c.H;
+                const faceY = BASE_H + c.H / 2; // Vertical Center of the face
+                const redCol = '#ef4444';
+                const frLeft = -L.totalLen / 2; const frRight = L.totalLen / 2;
+                const frTop = -L.totalWid / 2; const frBottom = L.totalWid / 2;
 
-                // Label for OH Gap
-                addLabel(`${ohGap.toFixed(2)}m`, new THREE.Vector3(0.6, midGapY, 0), labelCol, 0.4);
+                // Helper to check if current cargo 'idx' owns the gap display between 'idx' and 'oi'
+                const isOwner = (oi) => {
+                    const ob = allBounds[oi];
+                    const oc = L.cargos[oi];
+                    const oVol = oc.L * oc.W * oc.H;
+                    if (myVol < oVol) return true;
+                    if (Math.abs(myVol - oVol) < 0.01 && idx < oi) return true;
+                    return false;
+                };
 
-                // Vertical Gap Line from Top face to Red Box ceiling
-                addGapLine(new THREE.Vector3(0, cargoTopY, 0), new THREE.Vector3(0, slotTopY, 0));
-            }
+                // Left (X-dir)
+                let bestL = frLeft; let isLBlocked = false; let blockerLIdx = -1;
+                allBounds.forEach((ob, oi) => {
+                    if (oi === idx) return;
+                    if (ob.right < myB.left && ob.bottom > myB.top && ob.top < myB.bottom) {
+                        if (ob.right > bestL) { bestL = ob.right; isLBlocked = true; blockerLIdx = oi; }
+                    }
+                });
+                if (myB.left < frLeft - 0.02) {
+                    const oh = frLeft - myB.left;
+                    addGapLine(new THREE.Vector3(myB.left, BASE_H, c.z), new THREE.Vector3(frLeft, BASE_H, c.z), 0xef4444);
+                    addLabel(`${oh.toFixed(2)}m`, new THREE.Vector3(frLeft - oh / 2, BASE_H + 0.3, c.z), redCol, 0.35);
+                } else if (!isLBlocked && myB.left > frLeft + 0.05) {
+                    const val = myB.left - frLeft;
+                    addGapLine(new THREE.Vector3(myB.left, faceY, c.z), new THREE.Vector3(frLeft, faceY, c.z), 0x10b981);
+                    addLabel(`${val.toFixed(2)}m`, new THREE.Vector3(frLeft + val / 2, faceY + 0.1, c.z), labelCol, 0.35);
+                } else if (isLBlocked && isOwner(blockerLIdx)) {
+                    const val = myB.left - bestL;
+                    addGapLine(new THREE.Vector3(myB.left, faceY, c.z), new THREE.Vector3(bestL, faceY, c.z), 0x10b981);
+                    addLabel(`${val.toFixed(2)}m`, new THREE.Vector3(bestL + val / 2, faceY + 0.1, c.z), labelCol, 0.35);
+                }
+
+                // Right (X-dir)
+                let bestR = frRight; let isRBlocked = false; let blockerRIdx = -1;
+                allBounds.forEach((ob, oi) => {
+                    if (oi === idx) return;
+                    if (ob.left > myB.right && ob.bottom > myB.top && ob.top < myB.bottom) {
+                        if (ob.left < bestR) { bestR = ob.left; isRBlocked = true; blockerRIdx = oi; }
+                    }
+                });
+                if (myB.right > frRight + 0.02) {
+                    const oh = myB.right - frRight;
+                    addGapLine(new THREE.Vector3(frRight, BASE_H, c.z), new THREE.Vector3(myB.right, BASE_H, c.z), 0xef4444);
+                    addLabel(`${oh.toFixed(2)}m`, new THREE.Vector3(frRight + oh / 2, BASE_H + 0.3, c.z), redCol, 0.35);
+                } else if (!isRBlocked && myB.right < frRight - 0.05) {
+                    const val = frRight - myB.right;
+                    addGapLine(new THREE.Vector3(myB.right, faceY, c.z), new THREE.Vector3(frRight, faceY, c.z), 0x10b981);
+                    addLabel(`${val.toFixed(2)}m`, new THREE.Vector3(frRight - val / 2, faceY + 0.1, c.z), labelCol, 0.35);
+                } else if (isRBlocked && isOwner(blockerRIdx)) {
+                    const val = bestR - myB.right;
+                    addGapLine(new THREE.Vector3(myB.right, faceY, c.z), new THREE.Vector3(bestR, faceY, c.z), 0x10b981);
+                    addLabel(`${val.toFixed(2)}m`, new THREE.Vector3(myB.right + val / 2, faceY + 0.1, c.z), labelCol, 0.35);
+                }
+
+                // Top (Z-dir)
+                let bestT = frTop; let isTBlocked = false; let blockerTIdx = -1;
+                allBounds.forEach((ob, oi) => {
+                    if (oi === idx) return;
+                    if (ob.bottom < myB.top && ob.right > myB.left && ob.left < myB.right) {
+                        if (ob.bottom > bestT) { bestT = ob.bottom; isTBlocked = true; blockerTIdx = oi; }
+                    }
+                });
+                if (myB.top < frTop - 0.02) {
+                    const oh = frTop - myB.top;
+                    addGapLine(new THREE.Vector3(c.x, BASE_H, myB.top), new THREE.Vector3(c.x, BASE_H, frTop), 0xef4444);
+                    addLabel(`${oh.toFixed(2)}m`, new THREE.Vector3(c.x, BASE_H + 0.3, frTop - oh / 2), redCol, 0.35);
+                } else if (!isTBlocked && myB.top > frTop + 0.05) {
+                    const val = myB.top - frTop;
+                    addGapLine(new THREE.Vector3(c.x, faceY, myB.top), new THREE.Vector3(c.x, faceY, frTop), 0x10b981);
+                    addLabel(`${val.toFixed(2)}m`, new THREE.Vector3(c.x, faceY + 0.1, frTop + val / 2), labelCol, 0.35);
+                } else if (isTBlocked && isOwner(blockerTIdx)) {
+                    const val = myB.top - bestT;
+                    addGapLine(new THREE.Vector3(c.x, faceY, myB.top), new THREE.Vector3(c.x, faceY, bestT), 0x10b981);
+                    addLabel(`${val.toFixed(2)}m`, new THREE.Vector3(c.x, faceY + 0.1, bestT + val / 2), labelCol, 0.35);
+                }
+
+                // Bottom (Z-dir)
+                let bestB = frBottom; let isBBlocked = false; let blockerBIdx = -1;
+                allBounds.forEach((ob, oi) => {
+                    if (oi === idx) return;
+                    if (ob.top > myB.bottom && ob.right > myB.left && ob.left < myB.right) {
+                        if (ob.top < bestB) { bestB = ob.top; isBBlocked = true; blockerBIdx = oi; }
+                    }
+                });
+                if (myB.bottom > frBottom + 0.02) {
+                    const oh = myB.bottom - frBottom;
+                    addGapLine(new THREE.Vector3(c.x, BASE_H, frBottom), new THREE.Vector3(c.x, BASE_H, myB.bottom), 0xef4444);
+                    addLabel(`${oh.toFixed(2)}m`, new THREE.Vector3(c.x, BASE_H + 0.3, frBottom + oh / 2), redCol, 0.35);
+                } else if (!isBBlocked && myB.bottom < frBottom - 0.05) {
+                    const val = frBottom - myB.bottom;
+                    addGapLine(new THREE.Vector3(c.x, faceY, myB.bottom), new THREE.Vector3(c.x, faceY, frBottom), 0x10b981);
+                    addLabel(`${val.toFixed(2)}m`, new THREE.Vector3(c.x, faceY + 0.1, frBottom - val / 2), labelCol, 0.35);
+                } else if (isBBlocked && isOwner(blockerBIdx)) {
+                    const val = bestB - myB.bottom;
+                    addGapLine(new THREE.Vector3(c.x, faceY, myB.bottom), new THREE.Vector3(c.x, faceY, bestB), 0x10b981);
+                    addLabel(`${val.toFixed(2)}m`, new THREE.Vector3(c.x, faceY + 0.1, myB.bottom + val / 2), labelCol, 0.35);
+                }
+            });
         }
 
-        function addGapLine(p1, p2) {
+        function addGapLine(p1, p2, col = 0x10b981) {
             const dist = p1.distanceTo(p2);
             if (dist < 0.01) return;
-
             const geo = new THREE.CylinderGeometry(0.015, 0.015, dist, 8);
-            const mat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+            const mat = new THREE.MeshBasicMaterial({ color: col });
             const line = new THREE.Mesh(geo, mat);
-
-            const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
-            line.position.copy(mid);
+            line.position.copy(new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5));
             line.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
             grp.add(line);
-
-            // Add small dots at the contact points (Reverted to Spheres)
             const dotGeo = new THREE.SphereGeometry(0.045, 12, 12);
-            const dotMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
-            const d1 = new THREE.Mesh(dotGeo, dotMat); d1.position.copy(p1); grp.add(d1);
-            const d2 = new THREE.Mesh(dotGeo, dotMat); d2.position.copy(p2); grp.add(d2);
+            const d1 = new THREE.Mesh(dotGeo, mat); d1.position.copy(p1); grp.add(d1);
+            const d2 = new THREE.Mesh(dotGeo, mat); d2.position.copy(p2); grp.add(d2);
         }
 
         function addLabel(text, pos, color, scale, isSurface = false, rotation = null) {
@@ -985,17 +1515,11 @@
             cv.width = 400; cv.height = 100;
             const ctx = cv.getContext('2d');
             ctx.clearRect(0, 0, 400, 100);
-
-            // Numeric text only with subtle glow for readability
-            ctx.shadowColor = 'rgba(0,0,0,0.8)';
-            ctx.shadowBlur = 8;
-            ctx.fillStyle = color;
-            ctx.font = 'bold 44px Outfit, sans-serif';
+            ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
+            ctx.fillStyle = color; ctx.font = 'bold 44px Outfit, sans-serif';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(text, 200, 50);
-            const tex = new THREE.CanvasTexture(cv);
-            tex.needsUpdate = true;
-
+            const tex = new THREE.CanvasTexture(cv); tex.needsUpdate = true;
             if (isSurface) {
                 const geo = new THREE.PlaneGeometry(4 * scale, 1 * scale);
                 const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthTest: true });
@@ -1016,13 +1540,182 @@
         const cv2 = document.getElementById('c2d');
         const ctx2 = cv2.getContext('2d');
 
-        function draw2D(L) {
-            const W = cv2.clientWidth;
-            const H = cv2.clientHeight;
-            cv2.width = W; cv2.height = H;
-            ctx2.clearRect(0, 0, W, H);
+
+        /* ──────── 2D DRAG & DROP ──────── */
+        let dragObj2DIdx = -1;
+        let dragOffset2D = { x: 0, z: 0 };
+        let isDragging2D = false;
+        let snapLines2D = [];
+
+        cv2.addEventListener('pointerdown', e => {
+            if (state.view !== '2d') return;
+            const rect = cv2.getBoundingClientRect();
+            const W = rect.width; const H = rect.height;
+            const LInfo = getLayout();
+
             const PAD = 100;
-            const scale = Math.min((W - PAD * 2) / L.totalLen, (H - PAD * 2) / L.totalWid, 50);
+            const targetVisualLen = Math.max(LInfo.totalLen, LInfo.bbkArrL + 2);
+            const targetVisualWid = Math.max(LInfo.totalWid, LInfo.bbkArrW + 2);
+            const scale = Math.min((W - PAD * 2) / targetVisualLen, (H - PAD * 2) / targetVisualWid, 50);
+            const ox = W / 2; const oy = H / 2;
+
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            for (let i = cargosData.length - 1; i >= 0; i--) {
+                const c = cargosData[i];
+                const cL = state.orient === 'along' ? c.L : c.W;
+                const cW = state.orient === 'along' ? c.W : c.L;
+
+                const bx = ox + (c.x - cL / 2) * scale;
+                const by = oy + (c.z - cW / 2) * scale;
+                const bw = cL * scale;
+                const bh = cW * scale;
+
+                let hit = false;
+                if (state.shape === 'cylinder') {
+                    const dx = (mx - (ox + c.x * scale)) / (bw / 2);
+                    const dy = (my - (oy + c.z * scale)) / (bh / 2);
+                    if (dx * dx + dy * dy <= 1) hit = true;
+                } else {
+                    if (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh) hit = true;
+                }
+
+                if (hit) {
+                    cv2.style.cursor = 'grabbing';
+                    dragObj2DIdx = i;
+                    isDragging2D = true;
+                    const clickWorldX = (mx - ox) / scale;
+                    const clickWorldZ = (my - oy) / scale;
+                    dragOffset2D.x = clickWorldX - c.x;
+                    dragOffset2D.z = clickWorldZ - c.z;
+                    break;
+                }
+            }
+        });
+
+        cv2.addEventListener('pointermove', e => {
+            if (!isDragging2D || dragObj2DIdx === -1) return;
+            const rect = cv2.getBoundingClientRect();
+            const W = rect.width; const H = rect.height;
+            const LInfo = getLayout();
+            const PAD = 100;
+            const targetVisualLen = Math.max(LInfo.totalLen, LInfo.bbkArrL + 2);
+            const targetVisualWid = Math.max(LInfo.totalWid, LInfo.bbkArrW + 2);
+            const scale = Math.min((W - PAD * 2) / targetVisualLen, (H - PAD * 2) / targetVisualWid, 50);
+            const ox = W / 2; const oy = H / 2;
+
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            const clickWorldX = (mx - ox) / scale;
+            const clickWorldZ = (my - oy) / scale;
+
+            let tgtX = clickWorldX - dragOffset2D.x;
+            let tgtZ = clickWorldZ - dragOffset2D.z;
+
+            // 2D SNAPPING
+            snapLines2D = [];
+
+            if (isSnapEnabled) {
+                let snappedX = false, snappedZ = false;
+                const SNAP_DIST = 0.5;
+
+                if (Math.abs(tgtX) < SNAP_DIST) { tgtX = 0; snappedX = true; snapLines2D.push({ x1: 0, z1: -50, x2: 0, z2: 50 }); }
+                if (Math.abs(tgtZ) < SNAP_DIST) { tgtZ = 0; snappedZ = true; snapLines2D.push({ x1: -50, z1: 0, x2: 50, z2: 0 }); }
+
+                const draggingC = cargosData[dragObj2DIdx];
+                const cL = state.orient === 'along' ? draggingC.L : draggingC.W;
+                const cW = state.orient === 'along' ? draggingC.W : draggingC.L;
+                const myLeft = tgtX - cL / 2, myRight = tgtX + cL / 2;
+                const myTop = tgtZ - cW / 2, myBottom = tgtZ + cW / 2;
+
+                cargosData.forEach((c, idx) => {
+                    if (idx === dragObj2DIdx) return;
+                    const oL = state.orient === 'along' ? c.L : c.W;
+                    const oW = state.orient === 'along' ? c.W : c.L;
+                    const oLeft = c.x - oL / 2, oRight = c.x + oL / 2;
+                    const oTop = c.z - oW / 2, oBottom = c.z + oW / 2;
+                    const oCenterX = c.x, oCenterZ = c.z;
+
+                    if (!snappedX) {
+                        if (Math.abs(tgtX - oCenterX) < SNAP_DIST) { tgtX = oCenterX; snappedX = true; snapLines2D.push({ x1: tgtX, z1: -50, x2: tgtX, z2: 50 }); }
+                        else if (Math.abs(myLeft - oRight) < SNAP_DIST) { tgtX = oRight + cL / 2; snappedX = true; snapLines2D.push({ x1: tgtX - cL / 2, z1: -50, x2: tgtX - cL / 2, z2: 50 }); }
+                        else if (Math.abs(myRight - oLeft) < SNAP_DIST) { tgtX = oLeft - cL / 2; snappedX = true; snapLines2D.push({ x1: tgtX + cL / 2, z1: -50, x2: tgtX + cL / 2, z2: 50 }); }
+                        else if (Math.abs(myLeft - oLeft) < SNAP_DIST) { tgtX = oLeft + cL / 2; snappedX = true; snapLines2D.push({ x1: tgtX - cL / 2, z1: -50, x2: tgtX - cL / 2, z2: 50 }); }
+                        else if (Math.abs(myRight - oRight) < SNAP_DIST) { tgtX = oRight - cL / 2; snappedX = true; snapLines2D.push({ x1: tgtX + cL / 2, z1: -50, x2: tgtX + cL / 2, z2: 50 }); }
+                    }
+                    if (!snappedZ) {
+                        if (Math.abs(tgtZ - oCenterZ) < SNAP_DIST) { tgtZ = oCenterZ; snappedZ = true; snapLines2D.push({ x1: -50, z1: tgtZ, x2: 50, z2: tgtZ }); }
+                        else if (Math.abs(myTop - oBottom) < SNAP_DIST) { tgtZ = oBottom + cW / 2; snappedZ = true; snapLines2D.push({ x1: -50, z1: tgtZ - cW / 2, x2: 50, z2: tgtZ - cW / 2 }); }
+                        else if (Math.abs(myBottom - oTop) < SNAP_DIST) { tgtZ = oTop - cW / 2; snappedZ = true; snapLines2D.push({ x1: -50, z1: tgtZ + cW / 2, x2: 50, z2: tgtZ + cW / 2 }); }
+                        else if (Math.abs(myTop - oTop) < SNAP_DIST) { tgtZ = oTop + cW / 2; snappedZ = true; snapLines2D.push({ x1: -50, z1: tgtZ - cW / 2, x2: 50, z2: tgtZ - cW / 2 }); }
+                        else if (Math.abs(myBottom - oBottom) < SNAP_DIST) { tgtZ = oBottom - cW / 2; snappedZ = true; snapLines2D.push({ x1: -50, z1: tgtZ + cW / 2, x2: 50, z2: tgtZ + cW / 2 }); }
+                    }
+                });
+            }
+
+            cargosData[dragObj2DIdx].x = tgtX;
+            cargosData[dragObj2DIdx].z = tgtZ;
+
+            uiUpdate();
+        });
+
+        cv2.addEventListener('pointerup', e => {
+            if (isDragging2D) {
+                cv2.style.cursor = 'default';
+                isDragging2D = false;
+                dragObj2DIdx = -1;
+                snapLines2D = [];
+                uiUpdate();
+            }
+        });
+
+
+        cv2.addEventListener('pointermove', e => {
+            if (isDragging2D) return; // handled above
+            if (state.view !== '2d') return;
+            const rect = cv2.getBoundingClientRect();
+            const W = rect.width; const H = rect.height;
+            const LInfo = getLayout();
+            const PAD = 100;
+            const targetVisualLen = Math.max(LInfo.totalLen, LInfo.bbkArrL + 2);
+            const targetVisualWid = Math.max(LInfo.totalWid, LInfo.bbkArrW + 2);
+            const scale = Math.min((W - PAD * 2) / targetVisualLen, (H - PAD * 2) / targetVisualWid, 50);
+            const ox = W / 2; const oy = H / 2;
+
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+
+            let hit = false;
+            for (let i = cargosData.length - 1; i >= 0; i--) {
+                const c = cargosData[i];
+                const cL = state.orient === 'along' ? c.L : c.W;
+                const cW = state.orient === 'along' ? c.W : c.L;
+
+                const bx = ox + (c.x - cL / 2) * scale;
+                const by = oy + (c.z - cW / 2) * scale;
+                const bw = cL * scale;
+                const bh = cW * scale;
+
+                if (state.shape === 'cylinder') {
+                    const dx = (mx - (ox + c.x * scale)) / (bw / 2);
+                    const dy = (my - (oy + c.z * scale)) / (bh / 2);
+                    if (dx * dx + dy * dy <= 1) { hit = true; break; }
+                } else {
+                    if (mx >= bx && mx <= bx + bw && my >= by && my <= by + bh) { hit = true; break; }
+                }
+            }
+            cv2.style.cursor = hit ? 'grab' : 'default';
+        });
+
+        function draw2D(L) {
+            const W = cv2.clientWidth; const H = cv2.clientHeight;
+            cv2.width = W; cv2.height = H; ctx2.clearRect(0, 0, W, H);
+            const PAD = 100;
+            const targetVisualLen = Math.max(L.totalLen, L.bbkArrL + 2);
+            const targetVisualWid = Math.max(L.totalWid, L.bbkArrW + 2);
+            const scale = Math.min((W - PAD * 2) / targetVisualLen, (H - PAD * 2) / targetVisualWid, 50);
             const ox = W / 2; const oy = H / 2;
 
             for (let i = 0; i < L.frCount; i++) {
@@ -1031,26 +1724,18 @@
                 const ry = oy + (zOffset - FR_SPEC.W / 2) * scale;
                 ctx2.fillStyle = '#1e40af'; ctx2.fillRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
                 ctx2.strokeStyle = '#3b82f6'; ctx2.lineWidth = 1; ctx2.strokeRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
-
-                // Lashing dots in 2D
                 ctx2.fillStyle = '#60a5fa';
                 [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(c => {
                     ctx2.beginPath(); ctx2.arc(rx + (c[0] > 0 ? FR_SPEC.L - 0.3 : 0.3) * scale, ry + (c[1] > 0 ? FR_SPEC.W - 0.3 : 0.3) * scale, 2, 0, Math.PI * 2); ctx2.fill();
                 });
             }
 
-            // SLOT KILL VISUALIZATION in 2D
             L.killedSlots.forEach(s => {
                 const rx = ox + (s.x * FR_SPEC.L - FR_SPEC.L / 2) * scale;
                 const rzOffset = (s.z - (L.frCount - 1) / 2) * FR_SPEC.W;
                 const ry = oy + (rzOffset - FR_SPEC.W / 2) * scale;
-
-                ctx2.fillStyle = 'rgba(239, 68, 68, 0.15)';
-                ctx2.fillRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
-                ctx2.strokeStyle = '#ef4444'; ctx2.lineWidth = 1.5;
-                ctx2.strokeRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
-
-                // 40FR LABEL for base units (Outside Left-Center)
+                ctx2.fillStyle = 'rgba(239, 68, 68, 0.15)'; ctx2.fillRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
+                ctx2.strokeStyle = '#ef4444'; ctx2.lineWidth = 1.5; ctx2.strokeRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
                 if (s.x === 0 && s.y === 0) {
                     ctx2.fillStyle = '#ffffff';
                     ctx2.font = 'bold 15px Outfit'; ctx2.textAlign = 'right'; ctx2.textBaseline = 'middle';
@@ -1058,73 +1743,119 @@
                 }
             });
 
-            const bx = ox - (L.cargoAlong / 2) * scale;
-            const by = oy - (L.cargoAcross / 2) * scale;
-            const bw = L.cargoAlong * scale;
-            const bh = L.cargoAcross * scale;
+            L.cargos.forEach((c, idx) => {
+                const cL = L.orient === 'along' ? c.L : c.W;
+                const cW = L.orient === 'along' ? c.W : c.L;
+                const bx = ox + (c.x - cL / 2) * scale;
+                const by = oy + (c.z - cW / 2) * scale;
+                const bw = cL * scale;
+                const bh = cW * scale;
 
-            ctx2.fillStyle = L.bbkColor;
-            ctx2.globalAlpha = 0.9;
-            if (L.shape === 'cylinder') {
-                ctx2.beginPath();
-                ctx2.ellipse(ox, oy, bw / 2, bh / 2, 0, 0, Math.PI * 2);
-                ctx2.fill();
-            } else {
-                ctx2.fillRect(bx, by, bw, bh);
+                ctx2.fillStyle = c.color || L.bbkColor; ctx2.globalAlpha = 0.9;
+                if (L.shape === 'cylinder') { ctx2.beginPath(); ctx2.ellipse(ox + c.x * scale, oy + c.z * scale, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx2.fill(); }
+                else { ctx2.fillRect(bx, by, bw, bh); }
+                ctx2.globalAlpha = 1.0; ctx2.strokeStyle = '#f59e0b'; ctx2.lineWidth = 2;
+                if (L.shape === 'cylinder') { ctx2.beginPath(); ctx2.ellipse(ox + c.x * scale, oy + c.z * scale, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx2.stroke(); }
+                else { ctx2.strokeRect(bx, by, bw, bh); }
+
+                const fontSize = Math.min(14, bw / 10);
+                if (bw > 30 && bh > 20) {
+                    ctx2.font = `bold ${fontSize}px Outfit, sans-serif`;
+                    ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+                    ctx2.shadowColor = 'rgba(0,0,0,0.9)'; ctx2.shadowBlur = 4;
+                    const txt = `[${idx + 1}] ${c.L}x${c.W}x${c.H}m ${c.wt}t`;
+                    ctx2.strokeStyle = 'rgba(0,0,0,0.9)'; ctx2.lineWidth = 3;
+                    ctx2.strokeText(txt, ox + c.x * scale, oy + c.z * scale);
+                    ctx2.fillStyle = '#ffffff'; ctx2.fillText(txt, ox + c.x * scale, oy + c.z * scale);
+                }
+                ctx2.shadowBlur = 0;
+            });
+
+            // 2D INDIVIDUAL CARGO BOUNDARY DISTANCES (Smart)
+            const oLeftX = ox - (L.totalLen / 2) * scale;
+            const oRightX = ox + (L.totalLen / 2) * scale;
+            const oTopY = oy - (L.totalWid / 2) * scale;
+            const oBtmY = oy + (L.totalWid / 2) * scale;
+            const frL = -L.totalLen / 2; const frR = L.totalLen / 2;
+            const frT = -L.totalWid / 2; const frB = L.totalWid / 2;
+
+            const bMap = L.cargos.map(oc => {
+                const oL = state.orient === 'along' ? oc.L : oc.W;
+                const oW = state.orient === 'along' ? oc.W : oc.L;
+                return { left: oc.x - oL / 2, right: oc.x + oL / 2, top: oc.z - oW / 2, bottom: oc.z + oW / 2 };
+            });
+
+            L.cargos.forEach((c, i) => {
+                const mb = bMap[i];
+                const cx = ox + c.x * scale;
+                const cz = oy + c.z * scale;
+                const bxL = ox + mb.left * scale;
+                const bxR = ox + mb.right * scale;
+                const bzT = oy + mb.top * scale;
+                const bzB = oy + mb.bottom * scale;
+
+                // Left
+                let bestL = frL; let blockedL = false; let bIdxL = -1;
+                bMap.forEach((ob, oi) => { if (oi !== i && ob.right < mb.left && ob.bottom > mb.top && ob.top < mb.bottom) { if (ob.right > bestL) { bestL = ob.right; blockedL = true; bIdxL = oi; } } });
+                if (mb.left < frL - 0.01) drawDimArrow(oLeftX, cz, bxL, cz, Math.abs(mb.left - frL), '#ef4444');
+                else if (!blockedL) drawDimArrow(oLeftX, cz, bxL, cz, mb.left - frL, '#10b981');
+                else if (blockedL) {
+                    const oV = L.cargos[bIdxL].L * L.cargos[bIdxL].W * L.cargos[bIdxL].H; const mV = c.L * c.W * c.H;
+                    if (mV < oV || (Math.abs(mV - oV) < 0.01 && i < bIdxL)) drawDimArrow(ox + bestL * scale, cz, bxL, cz, mb.left - bestL, '#10b981');
+                }
+
+                // Right
+                let bestR = frR; let blockedR = false; let bIdxR = -1;
+                bMap.forEach((ob, oi) => { if (oi !== i && ob.left > mb.right && ob.bottom > mb.top && ob.top < mb.bottom) { if (ob.left < bestR) { bestR = ob.left; blockedR = true; bIdxR = oi; } } });
+                if (mb.right > frR + 0.01) drawDimArrow(oRightX, cz, bxR, cz, mb.right - frR, '#ef4444');
+                else if (!blockedR) drawDimArrow(bxR, cz, oRightX, cz, frR - mb.right, '#10b981');
+                else if (blockedR) {
+                    const oV = L.cargos[bIdxR].L * L.cargos[bIdxR].W * L.cargos[bIdxR].H; const mV = c.L * c.W * c.H;
+                    if (mV < oV || (Math.abs(mV - oV) < 0.01 && i < bIdxR)) drawDimArrow(bxR, cz, ox + bestR * scale, cz, bestR - mb.right, '#10b981');
+                }
+
+                // Top
+                let bestT = frT; let blockedT = false; let bIdxT = -1;
+                bMap.forEach((ob, oi) => { if (oi !== i && ob.bottom < mb.top && ob.right > mb.left && ob.left < mb.right) { if (ob.bottom > bestT) { bestT = ob.bottom; blockedT = true; bIdxT = oi; } } });
+                if (mb.top < frT - 0.01) drawDimArrow(cx, oTopY, cx, bzT, Math.abs(mb.top - frT), '#ef4444');
+                else if (!blockedT) drawDimArrow(cx, oTopY, cx, bzT, mb.top - frT, '#10b981');
+                else if (blockedT) {
+                    const oV = L.cargos[bIdxT].L * L.cargos[bIdxT].W * L.cargos[bIdxT].H; const mV = c.L * c.W * c.H;
+                    if (mV < oV || (Math.abs(mV - oV) < 0.01 && i < bIdxT)) drawDimArrow(cx, oy + bestT * scale, cx, bzT, mb.top - bestT, '#10b981');
+                }
+
+                // Bottom
+                let bestB = frB; let blockedB = false; let bIdxB = -1;
+                bMap.forEach((ob, oi) => { if (oi !== i && ob.top > mb.bottom && ob.right > mb.left && ob.left < mb.right) { if (ob.top < bestB) { bestB = ob.top; blockedB = true; bIdxB = oi; } } });
+                if (mb.bottom > frB + 0.01) drawDimArrow(cx, oBtmY, cx, bzB, mb.bottom - frB, '#ef4444');
+                else if (!blockedB) drawDimArrow(cx, bzB, cx, oBtmY, frB - mb.bottom, '#10b981');
+                else if (blockedB) {
+                    const oV = L.cargos[bIdxB].L * L.cargos[bIdxB].W * L.cargos[bIdxB].H; const mV = c.L * c.W * c.H;
+                    if (mV < oV || (Math.abs(mV - oV) < 0.01 && i < bIdxB)) drawDimArrow(cx, bzB, cx, oy + bestB * scale, bestB - mb.bottom, '#10b981');
+                }
+            });
+
+            // Draw 2D Snap lines
+            if (typeof snapLines2D !== 'undefined' && snapLines2D.length > 0) {
+                ctx2.strokeStyle = '#22d3ee';
+                ctx2.setLineDash([6, 4]);
+                ctx2.lineWidth = 1.5;
+                snapLines2D.forEach(line => {
+                    ctx2.beginPath();
+                    ctx2.moveTo(ox + line.x1 * scale, oy + line.z1 * scale);
+                    ctx2.lineTo(ox + line.x2 * scale, oy + line.z2 * scale);
+                    ctx2.stroke();
+                });
+                ctx2.setLineDash([]);
             }
-            ctx2.globalAlpha = 1.0;
-            ctx2.strokeStyle = '#f59e0b'; ctx2.lineWidth = 2;
-            if (L.shape === 'cylinder') {
-                ctx2.beginPath();
-                ctx2.ellipse(ox, oy, bw / 2, bh / 2, 0, 0, Math.PI * 2);
-                ctx2.stroke();
-            } else {
-                ctx2.strokeRect(bx, by, bw, bh);
-            }
-
-            // CARGO LABEL INSIDE BODY
-            ctx2.font = `bold ${Math.max(13, 11 * scale)}px Outfit, sans-serif`;
-            ctx2.textAlign = 'center';
-            ctx2.textBaseline = 'middle';
-            ctx2.shadowColor = 'rgba(0,0,0,0.9)';
-            ctx2.shadowBlur = 4;
-            // CARGO LABEL INSIDE BODY
-            const fontSize = Math.min(14, bw / 10); // Dynamic but capped at 14px
-            if (bw > 40 && bh > 20) {
-                ctx2.font = `bold ${fontSize}px Outfit, sans-serif`;
-                ctx2.textAlign = 'center';
-                ctx2.textBaseline = 'middle';
-                ctx2.shadowBlur = 4;
-                ctx2.shadowColor = 'rgba(0,0,0,0.8)';
-
-                const l1 = `${L.bbkL} x ${L.bbkW} x ${L.bbkH} m`;
-                const l2 = `${L.wt} Ton`;
-
-                ctx2.strokeStyle = 'rgba(0,0,0,0.9)';
-                ctx2.lineWidth = 3;
-                ctx2.strokeText(l1, ox, oy - (fontSize * 0.6));
-                ctx2.strokeText(l2, ox, oy + (fontSize * 0.6));
-
-                ctx2.fillStyle = '#ffffff';
-                ctx2.fillText(l1, ox, oy - (fontSize * 0.6));
-                ctx2.fillText(l2, ox, oy + (fontSize * 0.6));
-            }
-            ctx2.shadowBlur = 0; // Reset shadow
-
-            // DIMENSION ARROWS (GAP/Clearance)
-            drawDimArrow(ox - (L.totalLen / 2) * scale, oy, bx, oy, L.gapL);
-            drawDimArrow(ox + (L.totalLen / 2) * scale, oy, bx + bw, oy, L.gapL);
-            drawDimArrow(ox, oy - (L.totalWid / 2) * scale, ox, by, L.gapW);
-            drawDimArrow(ox, oy + (L.totalWid / 2) * scale, ox, by + bh, L.gapW);
         }
 
-        function drawDimArrow(x1, y1, x2, y2, val) {
-            if (val <= 0.05) return;
-            ctx2.strokeStyle = '#10b981'; ctx2.lineWidth = 1.5; ctx2.fillStyle = '#10b981';
-            // Line
+
+        function drawDimArrow(x1, y1, x2, y2, val, clr = '#10b981') {
+            if (Math.abs(val) <= 0.01) return;
+            ctx2.strokeStyle = clr; ctx2.lineWidth = 1.5; ctx2.fillStyle = clr;
             ctx2.beginPath(); ctx2.moveTo(x1, y1); ctx2.lineTo(x2, y2); ctx2.stroke();
 
-            // Ticks/Arrows
             const angle = Math.atan2(y2 - y1, x2 - x1);
             [[x1, y1, angle], [x2, y2, angle + Math.PI]].forEach(p => {
                 ctx2.beginPath(); ctx2.moveTo(p[0], p[1]);
@@ -1133,27 +1864,82 @@
                 ctx2.fill();
             });
 
-            // Label offset from middle (Above or Left)
             const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
             ctx2.save();
+            if (Math.abs(x1 - x2) > Math.abs(y1 - y2)) ctx2.translate(mx, my - 12);
+            else { ctx2.translate(mx - 20, my); ctx2.rotate(-Math.PI / 2); }
 
-            if (Math.abs(x1 - x2) > Math.abs(y1 - y2)) {
-                // Horizontal (Length Gap) -> Above
-                ctx2.translate(mx, my - 12);
-            } else {
-                // Vertical (Width Gap) -> Left
-                ctx2.translate(mx - 20, my);
-                ctx2.rotate(-Math.PI / 2);
-            }
-
-            ctx2.fillStyle = '#10b981'; ctx2.font = 'bold 12px JetBrains Mono';
+            ctx2.fillStyle = clr; ctx2.font = 'bold 12px JetBrains Mono';
             ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
             ctx2.shadowColor = 'rgba(0,0,0,0.8)'; ctx2.shadowBlur = 4;
             ctx2.fillText(`${val.toFixed(2)}m`, 0, 0);
             ctx2.restore();
         }
 
-        /* ──────── APP CORE ──────── */
+        /* ──────── SETTINGS / MISC ──────── */
+        let isSnapEnabled = true;
+
+        function toggleSnap() {
+            isSnapEnabled = !isSnapEnabled;
+            const btn = document.getElementById('btn-snap');
+            if (isSnapEnabled) {
+                btn.classList.add('active');
+                btn.innerText = 'ON';
+            } else {
+                btn.classList.remove('active');
+                btn.innerText = 'OFF';
+            }
+        }
+
+        let isAutoRotate = false;
+        let rotSpeed = 1.0;
+
+        function toggleAutoRotate() {
+            isAutoRotate = !isAutoRotate;
+            controls.autoRotate = isAutoRotate;
+            controls.autoRotateSpeed = rotSpeed;
+            const btn = document.getElementById('btn-auto-rotate');
+            const icon = document.getElementById('rotate-icon');
+            const text = document.getElementById('rotate-text');
+            const speedCtrl = document.getElementById('rot-speed-ctrl');
+
+            if (isAutoRotate) {
+                btn.classList.add('active');
+                icon.innerHTML = '⏸';
+                text.innerHTML = 'AUTO ROTATE : ON';
+                btn.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.4)';
+                btn.style.marginBottom = '8px';
+                speedCtrl.style.display = 'flex';
+            } else {
+                btn.classList.remove('active');
+                icon.innerHTML = '▶';
+                text.innerHTML = 'AUTO ROTATE : OFF';
+                btn.style.boxShadow = 'none';
+                btn.style.marginBottom = '16px';
+                speedCtrl.style.display = 'none';
+            }
+        }
+
+        function adjustRotateSpeed(delta) {
+            rotSpeed = Math.max(0.2, Math.min(5.0, rotSpeed + delta));
+            controls.autoRotateSpeed = rotSpeed;
+            document.getElementById('speed-val').innerText = rotSpeed.toFixed(1);
+        }
+
+        function adjustCameraDistance(dir) {
+            const spherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+            spherical.radius = Math.max(controls.minDistance, Math.min(controls.maxDistance, spherical.radius * (1 + dir * 0.03)));
+            camera.position.setFromSpherical(spherical).add(controls.target);
+            controls.update();
+        }
+
+        function adjustCameraHeight(dir) {
+            const spherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+            spherical.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, spherical.phi - dir * 0.03));
+            camera.position.setFromSpherical(spherical).add(controls.target);
+            controls.update();
+        }
+
         function setShape(s) {
             state.shape = s;
             document.getElementById('sBox').classList.toggle('active', s === 'box');
@@ -1168,6 +1954,7 @@
             cv3.style.display = v === '3d' ? 'block' : 'none';
             cv2.style.display = v === '2d' ? 'block' : 'none';
             document.getElementById('hint-bubble').innerHTML = v === '3d' ? 'Currently showing <b>3D DIGITAL TWIN</b>' : 'Currently showing <b>TOP LOADING PLAN</b>';
+            document.getElementById('camera-card').style.display = v === '3d' ? 'block' : 'none';
             uiUpdate();
         }
 
@@ -1201,8 +1988,47 @@
 
         window.addEventListener('resize', () => { resize(); uiUpdate(); });
 
+        /* ──────── RESIZER LOGIC ──────── */
+        const sidebar = document.getElementById('sidebar');
+        const resizer = document.getElementById('resizer');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.userSelect = 'none';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            let newWidth = e.clientX;
+            if (newWidth < 150) newWidth = 0; // Snap to collapse
+            else if (newWidth < 300) newWidth = 300; // Min usable width
+            if (newWidth > 800) newWidth = 800; // Max width
+
+            sidebar.style.width = newWidth + 'px';
+            if (newWidth === 0) {
+                sidebar.style.display = 'none';
+                resizer.style.borderLeft = '2px solid var(--accent2)';
+            } else {
+                sidebar.style.display = 'flex';
+                resizer.style.borderLeft = 'none';
+            }
+            resize();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.userSelect = 'auto';
+                resize();
+                uiUpdate();
+            }
+        });
+
         /* ──────── INIT ──────── */
+
         resize();
+        renderCargoRows();
         uiUpdate();
 
         (function anim() {
@@ -1212,5 +2038,3 @@
         })();
     </script>
 </body>
-
-</html>
