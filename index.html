@@ -12,6 +12,7 @@
         rel="stylesheet" />
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.4.5/gifshot.min.js"></script>
     <style>
         :root {
             --bg: #030712;
@@ -126,6 +127,23 @@
             background: var(--accent);
             color: white;
             box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        }
+
+        .canvas-wrapper.split-mode {
+            display: flex;
+            gap: 2px;
+            background: var(--border);
+        }
+
+        .canvas-wrapper.split-mode canvas {
+            position: relative !important;
+            flex: 1;
+            width: 50% !important;
+            height: 100% !important;
+        }
+
+        .canvas-wrapper.split-mode #c3d {
+            border-right: 1px solid var(--border);
         }
 
 
@@ -268,7 +286,7 @@
 
         /* ── LEFT PANEL ── */
         .left-sidebar {
-            width: 400px;
+            width: 420px;
             background: var(--panel);
             backdrop-filter: blur(20px);
             border-right: 1px solid var(--border);
@@ -381,8 +399,8 @@
             font-family: 'Outfit', sans-serif;
             outline: none;
             transition: all 0.2s;
-            width: 100px;
-            /* Reduced width by half */
+            width: 100%;
+            min-width: 0;
         }
 
         .input-field input:focus {
@@ -525,6 +543,33 @@
             margin-bottom: 14px;
             text-transform: uppercase;
             letter-spacing: 1.5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .overlay-card.collapsed {
+            padding-bottom: 0 !important;
+        }
+
+        .overlay-card.collapsed>*:not(.card-h) {
+            display: none !important;
+        }
+
+        .overlay-card.collapsed .card-h {
+            margin-bottom: 10px !important;
+        }
+
+        .toggle-icon {
+            font-size: 10px;
+            transition: transform 0.3s;
+            color: var(--muted);
+        }
+
+        .collapsed .toggle-icon {
+            transform: rotate(-90deg);
         }
 
         .data-row {
@@ -633,10 +678,50 @@
         .warn-box.active {
             display: block;
         }
+
+        /* GIF Record Overlay */
+        #rec-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            gap: 20px;
+        }
+
+        .loader-ring {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 
 <body>
+
+    <div id="rec-overlay">
+        <div class="loader-ring"></div>
+        <div id="rec-status" style="font-weight: 800; font-size: 18px; letter-spacing: 1px;">RECORDING 360...</div>
+        <div id="rec-progress" style="color: var(--muted); font-size: 14px;">0%</div>
+    </div>
 
     <header>
         <div class="logo-box">
@@ -648,6 +733,7 @@
         <div class="spacer"></div>
         <div class="view-toggle">
             <button class="view-btn active" id="btn3d" onclick="setView('3d')">3D VIEW</button>
+            <button class="view-btn" id="btnSplit" onclick="setView('split')">SPLIT</button>
             <button class="view-btn" id="btn2d" onclick="setView('2d')">2D PLAN</button>
         </div>
         <div class="spacer" style="flex: 2;"></div>
@@ -676,11 +762,18 @@
                 </div>
 
                 <div
-                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
                     <label style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">🧲
                         SNAP ALIGNMENT</label>
                     <button class="btn-choice active" id="btn-snap"
                         style="padding: 4px 12px; font-size: 11px; width: auto;" onclick="toggleSnap()">ON</button>
+                </div>
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">🥪
+                        FR SANDWICH (x2)</label>
+                    <button class="btn-choice" id="btn-sandwich"
+                        style="padding: 4px 12px; font-size: 11px; width: auto;" onclick="toggleSandwich()">OFF</button>
                 </div>
                 <div id="warn" class="warn-box">⚠ CARGO EXCEEDS ARRANGEMENT</div>
 
@@ -732,12 +825,14 @@
                 <div class="sec-header"><span class="sec-title">40FR Unit Specifications</span>
                     <div class="sec-line"></div>
                 </div>
-                <div class="grid-inputs" style="grid-template-columns: 1fr 1fr 1fr;">
+                <div class="grid-inputs" style="grid-template-columns: 1fr 1fr 1fr 1.2fr;">
                     <div class="input-field"><label>L (m)</label><input type="number" id="frL" step="0.001"
                             oninput="uiUpdate()" /></div>
                     <div class="input-field"><label>W (m)</label><input type="number" id="frW" step="0.001"
                             oninput="uiUpdate()" /></div>
                     <div class="input-field"><label>H (m)</label><input type="number" id="frH" step="0.001"
+                            oninput="uiUpdate()" /></div>
+                    <div class="input-field"><label>Payload (t)</label><input type="number" id="frPL" step="0.1"
                             oninput="uiUpdate()" /></div>
                 </div>
             </div>
@@ -771,8 +866,13 @@
                     style="margin-top: 16px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
                     <div class="data-row"><span class="data-lbl">Total Arrangement</span><span class="data-val"
                             id="disp-total">?</span></div>
-                    <div class="data-row"><span class="data-lbl">Load per Unit</span><span class="data-val"
-                            id="disp-load">?</span></div>
+                    <div class="data-row"
+                        style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+                        <span class="data-lbl">Avg. Load per Unit</span><span class="data-val" id="disp-load">?</span>
+                    </div>
+                    <div id="unit-loads-list" style="display:flex; flex-direction:column; gap:6px;">
+                        <!-- Unit loads will be injected here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -785,23 +885,15 @@
             <canvas id="c3d"></canvas>
             <canvas id="c2d"></canvas>
 
-            <div id="legend-box" class="overlay-card">
-                <div class="leg-item">
-                    <div class="leg-clr" style="background:#1e40af; border:1px solid #3b82f6"></div> 40FT Flat Rack Unit
-                </div>
-                <div class="leg-item">
-                    <div class="leg-clr" style="background:#92400e; border:1px solid #f59e0b"></div> Break Bulk Cargo
-                </div>
-                <div class="leg-item">
-                    <div class="leg-clr" style="background:transparent; border:1.5px dashed #10b981"></div> Clearance
-                    Margin
-                </div>
-            </div>
+
 
             <div class="right-overlays"
                 style="position: absolute; top: 24px; right: 24px; display: flex; flex-direction: column; gap: 16px; width: 260px; z-index: 10;">
                 <div id="summary-card" class="overlay-card" style="position: static; width: auto; padding: 20px;">
-                    <div class="card-h">BBK spec / Slot</div>
+                    <div class="card-h" onclick="toggleCollapse('summary-card')">
+                        <span>BBK spec / Slot</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
                     <div class="data-row"><span class="data-lbl">Dimensions</span><span class="data-val"
                             id="s-dims">?</span></div>
                     <div class="data-row"><span class="data-lbl">Weight</span><span class="data-val" id="s-wt">?</span>
@@ -817,7 +909,10 @@
                 </div>
 
                 <div id="camera-card" class="overlay-card" style="position: static; width: auto; padding: 20px;">
-                    <div class="card-h">Camera Controls</div>
+                    <div class="card-h" onclick="toggleCollapse('camera-card')">
+                        <span>Camera Controls</span>
+                        <span class="toggle-icon">▼</span>
+                    </div>
                     <button id="btn-auto-rotate" class="btn-choice"
                         style="width: 100%; margin-bottom: 16px; font-size: 13px; font-weight: 800; border-color: var(--accent); display: flex; justify-content: center; align-items: center; gap: 8px;"
                         onclick="toggleAutoRotate()">
@@ -825,7 +920,7 @@
                     </button>
 
                     <div id="rot-speed-ctrl"
-                        style="display: none; justify-content: space-between; align-items: center; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);">
                         <span
                             style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">ROTATION
                             SPEED</span>
@@ -863,6 +958,11 @@
                                     onclick="adjustCameraDistance(1)">-</button>
                             </div>
                         </div>
+                        <button class="btn-choice"
+                            style="grid-column: span 2; padding: 10px; font-weight: 800; border-color: var(--green); color: var(--green); margin-top: 8px;"
+                            onclick="record360GIF()">
+                            🎬 EXPORT 360° GIF
+                        </button>
                     </div>
                 </div>
             </div>
@@ -878,18 +978,31 @@
 
     <script>
         /* ──────── STATE & PERSISTENCE ──────── */
-        let FR_SPEC = { L: 12.192, W: 2.438, H: 1.97 };
-        function loadFRSpec() { const saved = localStorage.getItem('BBK_FR_SPEC'); if (saved) { try { FR_SPEC = JSON.parse(saved); } catch (e) { } } }
-        function saveFRSpec() { localStorage.setItem('BBK_FR_SPEC', JSON.stringify(FR_SPEC)); }
-        loadFRSpec();
+        let FR_SPEC = { L: 12.192, W: 2.438, H: 1.97, PL: 45.0 };
+        let state = { view: '3d', orient: 'along', frManualCount: null, shape: 'box', isSandwich: false };
+        let cargosData = [{ id: Date.now(), L: 10.0, W: 4.0, H: 2.8, wt: 25.0, x: 0, z: 0 }];
+
+        function saveSystem() {
+            localStorage.setItem('BBK_FR_SPEC', JSON.stringify(FR_SPEC));
+            localStorage.setItem('BBK_STATE', JSON.stringify(state));
+            localStorage.setItem('BBK_CARGOS', JSON.stringify(cargosData));
+        }
+
+        function loadSystem() {
+            try {
+                const sSpec = localStorage.getItem('BBK_FR_SPEC'); if (sSpec) FR_SPEC = JSON.parse(sSpec);
+                const sState = localStorage.getItem('BBK_STATE'); if (sState) state = JSON.parse(sState);
+                const sCargos = localStorage.getItem('BBK_CARGOS'); if (sCargos) cargosData = JSON.parse(sCargos);
+            } catch (e) { console.error("Load failed", e); }
+        }
+
+        loadSystem();
+
+        // Sync UI inputs with loaded state
         document.getElementById('frL').value = FR_SPEC.L;
         document.getElementById('frW').value = FR_SPEC.W;
         document.getElementById('frH').value = FR_SPEC.H;
-
-        const state = { view: '3d', orient: 'along', frManualCount: null, shape: 'box' };
-
-        // Dynamic Cargo Data Array
-        let cargosData = [{ id: 0, L: 10.0, W: 4.0, H: 2.8, wt: 25.0, x: 0, z: 0 }];
+        document.getElementById('frPL').value = FR_SPEC.PL || 45.0;
 
         /* ──────── THREE.JS CORE ──────── */
         const cv3 = document.getElementById('c3d');
@@ -989,10 +1102,25 @@
                     if (Math.abs(tgtX) < SNAP_DIST) { tgtX = 0; snappedX = true; drawSnapLine(new THREE.Vector3(0, 0, -50), new THREE.Vector3(0, 0, 50)); }
                     if (Math.abs(tgtZ) < SNAP_DIST) { tgtZ = 0; snappedZ = true; drawSnapLine(new THREE.Vector3(-50, 0, 0), new THREE.Vector3(50, 0, 0)); }
 
+                    const LInfo = getLayout();
+                    const frLeft = -FR_SPEC.L / 2; const frRight = FR_SPEC.L / 2;
+                    const frTop = -(LInfo.frCount * FR_SPEC.W) / 2;
+                    const frBottom = (LInfo.frCount * FR_SPEC.W) / 2;
+
                     const cL = state.orient === 'along' ? dragObj.userData.cD.L : dragObj.userData.cD.W;
                     const cW = state.orient === 'along' ? dragObj.userData.cD.W : dragObj.userData.cD.L;
                     const myLeft = tgtX - cL / 2, myRight = tgtX + cL / 2;
                     const myTop = tgtZ - cW / 2, myBottom = tgtZ + cW / 2;
+
+                    // Snap to FR Boundaries
+                    if (!snappedX) {
+                        if (Math.abs(myLeft - frLeft) < SNAP_DIST) { tgtX = frLeft + cL / 2; snappedX = true; drawSnapLine(new THREE.Vector3(frLeft, 0, -50), new THREE.Vector3(frLeft, 0, 50)); }
+                        else if (Math.abs(myRight - frRight) < SNAP_DIST) { tgtX = frRight - cL / 2; snappedX = true; drawSnapLine(new THREE.Vector3(frRight, 0, -50), new THREE.Vector3(frRight, 0, 50)); }
+                    }
+                    if (!snappedZ) {
+                        if (Math.abs(myTop - frTop) < SNAP_DIST) { tgtZ = frTop + cW / 2; snappedZ = true; drawSnapLine(new THREE.Vector3(-50, 0, frTop), new THREE.Vector3(50, 0, frTop)); }
+                        else if (Math.abs(myBottom - frBottom) < SNAP_DIST) { tgtZ = frBottom - cW / 2; snappedZ = true; drawSnapLine(new THREE.Vector3(-50, 0, frBottom), new THREE.Vector3(50, 0, frBottom)); }
+                    }
 
                     cargosData.forEach((c, idx) => {
                         if (idx === dragObj.userData.idx) return;
@@ -1138,10 +1266,11 @@
             const fl = parseFloat(document.getElementById('frL').value) || 12.192;
             const fw = parseFloat(document.getElementById('frW').value) || 2.438;
             const fh = parseFloat(document.getElementById('frH').value) || 1.97;
-            if (fl !== FR_SPEC.L || fw !== FR_SPEC.W || fh !== FR_SPEC.H) {
-                FR_SPEC = { L: fl, W: fw, H: fh };
-                saveFRSpec();
+            const fpl = parseFloat(document.getElementById('frPL').value) || 45.0;
+            if (fl !== FR_SPEC.L || fw !== FR_SPEC.W || fh !== FR_SPEC.H || fpl !== FR_SPEC.PL) {
+                FR_SPEC = { L: fl, W: fw, H: fh, PL: fpl };
             }
+            saveSystem();
 
             const LInfo = getLayout();
 
@@ -1149,10 +1278,75 @@
             document.getElementById('disp-total').textContent = `${LInfo.totalLen.toFixed(2)} x ${LInfo.totalWid.toFixed(2)} m`;
             document.getElementById('disp-load').textContent = `${(LInfo.totalWt / LInfo.frCount).toFixed(1)} t / Unit`;
 
+            // Unit Load Display and Warning
+            const unitList = document.getElementById('unit-loads-list');
+            unitList.innerHTML = '';
+            let overloaded = false;
+            const maxPL = state.isSandwich ? FR_SPEC.PL * 1.5 : FR_SPEC.PL;
+
+            LInfo.unitLoads.forEach((wt, i) => {
+                const maxTop = FR_SPEC.PL;
+                const maxBtm = FR_SPEC.PL;
+                const maxOverall = state.isSandwich ? FR_SPEC.PL * 2.0 : FR_SPEC.PL;
+
+                let topWt = wt;
+                let btmWt = 0;
+
+                if (state.isSandwich) {
+                    topWt = wt * (1.0 / 1.5);
+                    btmWt = wt * (0.5 / 1.5);
+                }
+
+                const topPerc = (topWt / maxTop) * 100;
+                const btmPerc = state.isSandwich ? (btmWt / maxBtm) * 100 : 0;
+                const totalCargoShare = LInfo.totalWt > 0 ? (wt / LInfo.totalWt) * 100 : 0;
+
+                const topOver = topWt > maxTop + 0.001;
+                const btmOver = btmWt > maxBtm + 0.001;
+                const isOverallOver = wt > maxOverall + 0.001;
+                if (topOver || btmOver || isOverallOver) overloaded = true;
+
+                const stackBox = document.createElement('div');
+                stackBox.style.marginBottom = '14px';
+                stackBox.style.padding = '12px';
+                stackBox.style.background = 'rgba(0,0,0,0.35)';
+                stackBox.style.borderRadius = '12px';
+                stackBox.style.border = '1px solid var(--border)';
+
+                let html = `
+                    <div style="font-size:11px; font-weight:800; color:var(--accent2); margin-bottom:10px; letter-spacing:1px; display:flex; justify-content:space-between; align-items:center;">
+                        <span>POSITION #${i + 1} <span style="color:var(--gold); font-weight:600; margin-left:8px;">(${totalCargoShare.toFixed(1)}% OF TOTAL)</span></span>
+                        <span style="color:${isOverallOver ? 'var(--red)' : 'var(--muted)'}; font-size:13px;">${wt.toFixed(1)}t Total</span>
+                    </div>
+                    <div class="data-row" style="font-size:14px; margin-bottom:6px;">
+                        <span class="data-lbl" style="font-weight:700;">40FR (TOP)</span>
+                        <span class="data-val" style="color:${topOver ? 'var(--red)' : '#60a5fa'}; font-weight:800;">
+                            ${topWt.toFixed(1)}t / ${maxTop}t <span style="font-size:11px; opacity:0.8">(${topPerc.toFixed(1)}%)</span>
+                        </span>
+                    </div>
+                `;
+                if (state.isSandwich) {
+                    html += `
+                        <div class="data-row" style="font-size:14px; margin-bottom:0;">
+                            <span class="data-lbl" style="font-weight:700;">40FR (BTM)</span>
+                            <span class="data-val" style="color:${btmOver ? 'var(--red)' : 'var(--green)'}; font-weight:800;">
+                                ${btmWt.toFixed(1)}t / ${maxBtm}t <span style="font-size:11px; opacity:0.8">(${btmPerc.toFixed(1)}%)</span>
+                            </span>
+                        </div>
+                    `;
+                }
+                stackBox.innerHTML = html;
+                unitList.appendChild(stackBox);
+            });
+
             const warn = document.getElementById('warn');
-            if (LInfo.isOL || LInfo.isOW || LInfo.isOH) {
+            const oogMsg = (LInfo.isOL ? 'OL ' : '') + (LInfo.isOW ? 'OW ' : '') + (LInfo.isOH ? 'OH ' : '');
+            if (LInfo.isOL || LInfo.isOW || LInfo.isOH || overloaded) {
                 warn.classList.add('active');
-                warn.textContent = `⚠ OOG DETECTED: ${LInfo.isOL ? 'OL ' : ''}${LInfo.isOW ? 'OW ' : ''}${LInfo.isOH ? 'OH ' : ''}`;
+                let msg = '⚠ WARNING: ';
+                if (oogMsg) msg += `OOG [${oogMsg.trim()}] `;
+                if (overloaded) msg += `PAYLOAD EXCEEDED! (Max ${maxPL.toFixed(1)}t)`;
+                warn.textContent = msg;
             } else {
                 warn.classList.remove('active');
             }
@@ -1187,8 +1381,20 @@
             document.getElementById('s-fr').textContent = `${LInfo.frCount} Units`;
             document.getElementById('s-kill').textContent = `${LInfo.totalTEU} TEU`;
 
-            if (state.view === '3d') build3D(LInfo);
-            else draw2D(LInfo);
+            if (state.view === '3d') {
+                cv3.style.display = 'block';
+                cv2.style.display = 'none';
+                build3D(LInfo);
+            } else if (state.view === '2d') {
+                cv3.style.display = 'none';
+                cv2.style.display = 'block';
+                draw2D(LInfo);
+            } else if (state.view === 'split') {
+                cv3.style.display = 'block';
+                cv2.style.display = 'block';
+                build3D(LInfo);
+                draw2D(LInfo);
+            }
         }
 
         function getLayout() {
@@ -1272,6 +1478,23 @@
 
             const totalTEU = (killedSlots.length * 2);
 
+            // Weight Distribution per Unit
+            const unitLoads = new Array(frCount).fill(0);
+            cargosData.forEach(c => {
+                const cW = state.orient === 'along' ? c.W : c.L;
+                const c_minZ = c.z - cW / 2;
+                const c_maxZ = c.z + cW / 2;
+
+                for (let i = 0; i < frCount; i++) {
+                    const zStart = (i - (frCount - 1) / 2) * FR_SPEC.W - FR_SPEC.W / 2;
+                    const zEnd = zStart + FR_SPEC.W;
+                    const overlap = Math.max(0, Math.min(zEnd, c_maxZ) - Math.max(zStart, c_minZ));
+                    if (overlap > 0.001) {
+                        unitLoads[i] += c.wt * (overlap / cW);
+                    }
+                }
+            });
+
             return {
                 cargos: cargosData,
                 bbkColor, shape: state.shape,
@@ -1281,7 +1504,8 @@
                 extZMinX, extZMaxX, extXMinZ, extXMaxZ,
                 minX, maxX, minZ, maxZ,
                 orient: state.orient,
-                isOL, isOW, isOH, totalTEU, killedSlots
+                isOL, isOW, isOH, totalTEU, killedSlots,
+                unitLoads
             };
         }
 
@@ -1292,16 +1516,30 @@
 
             // Base FRs
             for (let i = 0; i < L.frCount; i++) {
+                const z = (i - (L.frCount - 1) / 2) * FR_SPEC.W;
+
+                // Top FR (Blue)
                 const geo = new THREE.BoxGeometry(FR_SPEC.L, BASE_H, FR_SPEC.W);
                 const mat = new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.5, metalness: 0.3 });
                 const mesh = new THREE.Mesh(geo, mat);
-                const z = (i - (L.frCount - 1) / 2) * FR_SPEC.W;
                 mesh.position.set(0, BASE_H / 2, z);
                 mesh.receiveShadow = true;
                 grp.add(mesh);
                 const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x3b82f6 }));
                 edges.position.copy(mesh.position);
                 grp.add(edges);
+
+                // Sandwich FR (Green)
+                if (state.isSandwich) {
+                    const sMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.5, metalness: 0.2 });
+                    const sMesh = new THREE.Mesh(geo, sMat);
+                    sMesh.position.set(0, -BASE_H / 2, z);
+                    grp.add(sMesh);
+                    const sEdges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x34d399, transparent: true, opacity: 0.5 }));
+                    sEdges.position.copy(sMesh.position);
+                    grp.add(sEdges);
+                }
+
                 const labelPos = new THREE.Vector3(-(FR_SPEC.L / 2 + 1.6), BASE_H + 0.02, z);
                 addLabel(`40FR #${i + 1}`, labelPos, '#ffffff', 0.8, true, new THREE.Euler(-Math.PI / 2, 0, 0));
             }
@@ -1548,7 +1786,7 @@
         let snapLines2D = [];
 
         cv2.addEventListener('pointerdown', e => {
-            if (state.view !== '2d') return;
+            if (state.view !== '2d' && state.view !== 'split') return;
             const rect = cv2.getBoundingClientRect();
             const W = rect.width; const H = rect.height;
             const LInfo = getLayout();
@@ -1624,11 +1862,25 @@
                 if (Math.abs(tgtX) < SNAP_DIST) { tgtX = 0; snappedX = true; snapLines2D.push({ x1: 0, z1: -50, x2: 0, z2: 50 }); }
                 if (Math.abs(tgtZ) < SNAP_DIST) { tgtZ = 0; snappedZ = true; snapLines2D.push({ x1: -50, z1: 0, x2: 50, z2: 0 }); }
 
+                const frLeft = -FR_SPEC.L / 2; const frRight = FR_SPEC.L / 2;
+                const frTop = -(LInfo.frCount * FR_SPEC.W) / 2;
+                const frBottom = (LInfo.frCount * FR_SPEC.W) / 2;
+
                 const draggingC = cargosData[dragObj2DIdx];
                 const cL = state.orient === 'along' ? draggingC.L : draggingC.W;
                 const cW = state.orient === 'along' ? draggingC.W : draggingC.L;
                 const myLeft = tgtX - cL / 2, myRight = tgtX + cL / 2;
                 const myTop = tgtZ - cW / 2, myBottom = tgtZ + cW / 2;
+
+                // Snap to FR Boundaries
+                if (!snappedX) {
+                    if (Math.abs(myLeft - frLeft) < SNAP_DIST) { tgtX = frLeft + cL / 2; snappedX = true; snapLines2D.push({ x1: frLeft, z1: -50, x2: frLeft, z2: 50 }); }
+                    else if (Math.abs(myRight - frRight) < SNAP_DIST) { tgtX = frRight - cL / 2; snappedX = true; snapLines2D.push({ x1: frRight, z1: -50, x2: frRight, z2: 50 }); }
+                }
+                if (!snappedZ) {
+                    if (Math.abs(myTop - frTop) < SNAP_DIST) { tgtZ = frTop + cW / 2; snappedZ = true; snapLines2D.push({ x1: -50, z1: frTop, x2: 50, z2: frTop }); }
+                    else if (Math.abs(myBottom - frBottom) < SNAP_DIST) { tgtZ = frBottom - cW / 2; snappedZ = true; snapLines2D.push({ x1: -50, z1: frBottom, x2: 50, z2: frBottom }); }
+                }
 
                 cargosData.forEach((c, idx) => {
                     if (idx === dragObj2DIdx) return;
@@ -1674,7 +1926,7 @@
 
         cv2.addEventListener('pointermove', e => {
             if (isDragging2D) return; // handled above
-            if (state.view !== '2d') return;
+            if (state.view !== '2d' && state.view !== 'split') return;
             const rect = cv2.getBoundingClientRect();
             const W = rect.width; const H = rect.height;
             const LInfo = getLayout();
@@ -1908,15 +2160,11 @@
                 icon.innerHTML = '⏸';
                 text.innerHTML = 'AUTO ROTATE : ON';
                 btn.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.4)';
-                btn.style.marginBottom = '8px';
-                speedCtrl.style.display = 'flex';
             } else {
                 btn.classList.remove('active');
                 icon.innerHTML = '▶';
                 text.innerHTML = 'AUTO ROTATE : OFF';
                 btn.style.boxShadow = 'none';
-                btn.style.marginBottom = '16px';
-                speedCtrl.style.display = 'none';
             }
         }
 
@@ -1951,10 +2199,25 @@
             state.view = v;
             document.getElementById('btn3d').classList.toggle('active', v === '3d');
             document.getElementById('btn2d').classList.toggle('active', v === '2d');
-            cv3.style.display = v === '3d' ? 'block' : 'none';
-            cv2.style.display = v === '2d' ? 'block' : 'none';
-            document.getElementById('hint-bubble').innerHTML = v === '3d' ? 'Currently showing <b>3D DIGITAL TWIN</b>' : 'Currently showing <b>TOP LOADING PLAN</b>';
-            document.getElementById('camera-card').style.display = v === '3d' ? 'block' : 'none';
+            document.getElementById('btnSplit').classList.toggle('active', v === 'split');
+
+            const wrapper = document.getElementById('canvas-wrapper');
+            if (v === 'split') {
+                wrapper.classList.add('split-mode');
+                cv3.style.display = 'block';
+                cv2.style.display = 'block';
+            } else {
+                wrapper.classList.remove('split-mode');
+                cv3.style.display = v === '3d' ? 'block' : 'none';
+                cv2.style.display = v === '2d' ? 'block' : 'none';
+            }
+
+            document.getElementById('hint-bubble').innerHTML =
+                v === '3d' ? 'Currently showing <b>3D DIGITAL TWIN</b>' :
+                    (v === '2d' ? 'Currently showing <b>TOP LOADING PLAN</b>' : 'Currently showing <b>HYBRID SPLIT VIEW</b>');
+
+            document.getElementById('camera-card').style.display = (v === '3d' || v === 'split') ? 'block' : 'none';
+            resize();
             uiUpdate();
         }
 
@@ -1978,12 +2241,18 @@
             controls.update();
         }
 
+        function toggleCollapse(id) {
+            document.getElementById(id).classList.toggle('collapsed');
+        }
+
         function resize() {
-            const w = document.getElementById('canvas-wrapper').clientWidth;
-            const h = document.getElementById('canvas-wrapper').clientHeight;
-            renderer.setSize(w, h);
-            camera.aspect = w / h;
-            camera.updateProjectionMatrix();
+            const w = cv3.clientWidth;
+            const h = cv3.clientHeight;
+            if (w > 0 && h > 0) {
+                renderer.setSize(w, h, false);
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+            }
         }
 
         window.addEventListener('resize', () => { resize(); uiUpdate(); });
@@ -2031,10 +2300,93 @@
         renderCargoRows();
         uiUpdate();
 
+        function toggleSandwich() {
+            state.isSandwich = !state.isSandwich;
+            const btn = document.getElementById('btn-sandwich');
+            btn.textContent = state.isSandwich ? 'ON' : 'OFF';
+            btn.classList.toggle('active', state.isSandwich);
+            uiUpdate();
+        }
+
+        async function record360GIF() {
+            if (state.view !== '3d' && state.view !== 'split') {
+                alert("Please switch to 3D or Split view to record.");
+                return;
+            }
+
+            const overlay = document.getElementById('rec-overlay');
+            const status = document.getElementById('rec-status');
+            const progress = document.getElementById('rec-progress');
+
+            overlay.style.display = 'flex';
+            status.textContent = "RECORDING 360°...";
+
+            // Setup recording
+            const wasRotating = controls.autoRotate;
+            const prevSpeed = controls.autoRotateSpeed;
+
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 6.0; // Even faster for quick capture
+
+            const frames = [];
+            const targetFrames = 16; // Express mode: only 16 frames for super fast processing
+            let startTheta = controls.getAzimuthalAngle();
+            let totalTurned = 0;
+            let lastTheta = startTheta;
+
+            const captureFrame = () => {
+                const data = cv3.toDataURL('image/jpeg', 0.6);
+                frames.push(data);
+
+                let currentTheta = controls.getAzimuthalAngle();
+                let diff = currentTheta - lastTheta;
+                if (diff < -Math.PI) diff += Math.PI * 2;
+                if (diff > Math.PI) diff -= Math.PI * 2;
+                totalTurned += Math.abs(diff);
+                lastTheta = currentTheta;
+
+                let perc = Math.min(100, (totalTurned / (Math.PI * 2)) * 100);
+                progress.textContent = `Capturing: ${Math.round(perc)}%`;
+
+                if (totalTurned < Math.PI * 2 && frames.length < targetFrames) {
+                    setTimeout(captureFrame, 60); // Faster capture
+                } else {
+                    renderGIF();
+                }
+            };
+
+            const renderGIF = () => {
+                status.textContent = "RENDERING GIF...";
+                progress.textContent = "Please wait, this may take a few seconds.";
+
+                gifshot.createGIF({
+                    images: frames,
+                    gifWidth: 320,
+                    gifHeight: 240,
+                    interval: 0.1,
+                    numFrames: frames.length,
+                    frameDuration: 1,
+                    sampleInterval: 50 // Ultra-fast sampling
+                }, function (obj) {
+                    if (!obj.error) {
+                        const link = document.createElement('a');
+                        link.href = obj.image;
+                        link.download = `BBK_Stowage_360_${Date.now()}.gif`;
+                        link.click();
+                    }
+                    overlay.style.display = 'none';
+                    controls.autoRotate = wasRotating;
+                    controls.autoRotateSpeed = prevSpeed;
+                });
+            };
+
+            captureFrame();
+        }
+
         (function anim() {
             requestAnimationFrame(anim);
             controls.update();
-            if (state.view === '3d') renderer.render(scene, camera);
+            if (state.view === '3d' || state.view === 'split') renderer.render(scene, camera);
         })();
     </script>
 </body>
