@@ -2037,7 +2037,7 @@
 
             for (let i = 0; i < lc; i++) {
                 h += `<th>L${i + 1}</th>`; m += `<td>100</td>`; td += `<td>-</td>`; ld += `<td>${i % 2 == 0 ? 'Fwd' : 'Aft'}</td>`;
-                a += `<td>${alphaL.toFixed(0)}°</td>`; b += `<td>90°</td>`; d += `<td>${L.totalLen.toFixed(1)}</td>`;
+                a += `<td>0°</td>`; b += `<td>${alphaL.toFixed(0)}°</td>`; d += `<td>${L.totalLen.toFixed(1)}</td>`;
             }
             tbl.innerHTML = h + "</tr>" + m + "</tr>" + td + "</tr>" + ld + "</tr>" + a + "</tr>" + b + "</tr>" + d + "</tr>";
         }
