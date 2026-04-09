@@ -90,6 +90,7 @@
             letter-spacing: -0.5px;
             background: linear-gradient(to right, #60a5fa, #22d3ee);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -588,13 +589,61 @@
             font-family: 'JetBrains Mono';
         }
 
-        #legend-box {
-            top: 20px;
-            left: 20px;
-            padding: 12px 16px;
+        #lashing-stats {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            pointer-events: none;
+            padding: 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #fbbf24;
+            display: none;
+            z-index: 100;
+        }
+
+        .stat-row {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
+            justify-content: space-between;
+            margin-bottom: 2px;
+            font-weight: 400;
+            gap: 20px;
+        }
+
+        .stat-val {
+            color: #fbbf24;
+        }
+
+        #lashing-table-overlay {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            background: none;
+            padding: 0;
+            z-index: 90;
+        }
+
+        .lashing-table {
+            border-collapse: collapse;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #fbbf24;
+            text-align: center;
+        }
+
+        .lashing-table th,
+        .lashing-table td {
+            border: 1px solid #fbbf24;
+            padding: 2px 16px;
+            line-height: 1.2;
+        }
+
+        .lashing-table th {
+            color: #fbbf24;
+            text-transform: uppercase;
+            font-weight: 700;
         }
 
         .leg-item {
@@ -735,6 +784,9 @@
             <button class="view-btn active" id="btn3d" onclick="setView('3d')">3D VIEW</button>
             <button class="view-btn" id="btnSplit" onclick="setView('split')">SPLIT</button>
             <button class="view-btn" id="btn2d" onclick="setView('2d')">2D PLAN</button>
+            <button class="view-btn" id="btnLashing" onclick="toggleLashing()"
+                style="border-left: 1px solid var(--border); margin-left: 8px; color: var(--gold);">LASHING:
+                OFF</button>
         </div>
         <div class="spacer" style="flex: 2;"></div>
         <div class="signature-final">
@@ -802,6 +854,23 @@
                         ATHWARTSHIP
                         <span class="btn-subtext">L Perpendicular</span>
                     </button>
+                </div>
+            </div>
+
+            <!-- LASHING CONTROL -->
+            <div class="section">
+                <div class="sec-header"><span class="sec-title">Lashing Simulation</span>
+                    <div class="sec-line"></div>
+                </div>
+                <div class="grid-inputs">
+                    <div class="input-field">
+                        <label>Transverse Count</label>
+                        <input type="number" id="tLashCount" min="2" step="1" value="4" oninput="uiUpdate()" />
+                    </div>
+                    <div class="input-field">
+                        <label>Longitudinal Count</label>
+                        <input type="number" id="lLashCount" min="2" step="1" value="2" oninput="uiUpdate()" />
+                    </div>
                 </div>
             </div>
 
@@ -884,6 +953,49 @@
         <div class="canvas-wrapper" id="canvas-wrapper">
             <canvas id="c3d"></canvas>
             <canvas id="c2d"></canvas>
+
+            <div id="lashing-table-overlay">
+                <table class="lashing-table" id="lashing-data-table">
+                    <!-- Updated via JS -->
+                </table>
+            </div>
+
+            <div id="lashing-stats">
+                <div
+                    style="font-size:13px; font-weight:800; color:var(--gold); margin-bottom:14px; text-transform:uppercase; letter-spacing:1px; text-decoration: underline;">
+                    Lashing Data [CSM]</div>
+                <div style="margin-bottom:6px; font-weight:800; font-size:11px; color:var(--gold);">ACCELERATIONS</div>
+                <div class="stat-row">
+                    <span>Transverse (a<sub>t</sub>)</span>
+                    <span class="stat-val">5.23 m/s²</span>
+                </div>
+                <div class="stat-row">
+                    <span>Vertical (a<sub>v</sub>)</span>
+                    <span class="stat-val">4.83 m/s²</span>
+                </div>
+                <div class="stat-row">
+                    <span>Longitudinal (a<sub>l</sub>)</span>
+                    <span class="stat-val">1.99 m/s²</span>
+                </div>
+
+                <div style="color:var(--gold); margin-top:16px; margin-bottom:6px; font-weight:800; font-size:11px;">
+                    RESULTS: ACTUAL FORCES</div>
+                <div class="stat-row"><span>Trans sliding force</span> <span class="stat-val" id="res-t-force">?</span>
+                </div>
+                <div class="stat-row"><span>Long sliding force</span> <span class="stat-val" id="res-l-force">?</span>
+                </div>
+                <div class="stat-row"><span>Cargo tipping moment</span> <span class="stat-val" id="res-tipping">?</span>
+                </div>
+
+                <div style="color:var(--gold); margin-top:12px; margin-bottom:6px; font-weight:800; font-size:11px;">
+                    SECURING CAPACITY [OK]</div>
+                <div class="stat-row"><span>Trans capacity (kN)</span> <span class="stat-val" id="res-t-cap">?</span>
+                </div>
+                <div class="stat-row"><span>Long capacity (kN)</span> <span class="stat-val" id="res-l-cap">?</span>
+                </div>
+                <div class="stat-row"><span>Tipping capacity (kNm)</span> <span class="stat-val"
+                        id="res-tp-cap">?</span></div>
+            </div>
 
 
 
@@ -979,7 +1091,7 @@
     <script>
         /* ──────── STATE & PERSISTENCE ──────── */
         let FR_SPEC = { L: 12.192, W: 2.438, H: 1.97, PL: 45.0 };
-        let state = { view: '3d', orient: 'along', frManualCount: null, shape: 'box', isSandwich: false };
+        let state = { view: '3d', orient: 'along', frManualCount: null, shape: 'box', isSandwich: false, showLashing: false, tLashCount: 4, lLashCount: 2 };
         let cargosData = [{ id: Date.now(), L: 10.0, W: 4.0, H: 2.8, wt: 25.0, x: 0, z: 0 }];
 
         function saveSystem() {
@@ -1003,6 +1115,22 @@
         document.getElementById('frW').value = FR_SPEC.W;
         document.getElementById('frH').value = FR_SPEC.H;
         document.getElementById('frPL').value = FR_SPEC.PL || 45.0;
+        document.getElementById('tLashCount').value = state.tLashCount;
+        document.getElementById('lLashCount').value = state.lLashCount;
+
+        function toggleLashing() {
+            state.showLashing = !state.showLashing;
+            syncLashingBtn();
+            uiUpdate();
+        }
+
+        function syncLashingBtn() {
+            const btn = document.getElementById('btnLashing');
+            if (!btn) return;
+            btn.textContent = state.showLashing ? "LASHING: ON" : "LASHING: OFF";
+            btn.style.color = state.showLashing ? "var(--accent2)" : "var(--gold)";
+        }
+        syncLashingBtn();
 
         /* ──────── THREE.JS CORE ──────── */
         const cv3 = document.getElementById('c3d');
@@ -1270,6 +1398,8 @@
             if (fl !== FR_SPEC.L || fw !== FR_SPEC.W || fh !== FR_SPEC.H || fpl !== FR_SPEC.PL) {
                 FR_SPEC = { L: fl, W: fw, H: fh, PL: fpl };
             }
+            state.tLashCount = parseInt(document.getElementById('tLashCount').value) || 0;
+            state.lLashCount = parseInt(document.getElementById('lLashCount').value) || 0;
             saveSystem();
 
             const LInfo = getLayout();
@@ -1314,23 +1444,23 @@
                 stackBox.style.border = '1px solid var(--border)';
 
                 let html = `
-                    <div style="font-size:11px; font-weight:800; color:var(--accent2); margin-bottom:10px; letter-spacing:1px; display:flex; justify-content:space-between; align-items:center;">
-                        <span>POSITION #${i + 1} <span style="color:var(--gold); font-weight:600; margin-left:8px;">(${totalCargoShare.toFixed(1)}% OF TOTAL)</span></span>
-                        <span style="color:${isOverallOver ? 'var(--red)' : 'var(--muted)'}; font-size:13px;">${wt.toFixed(1)}t Total</span>
+                    <div style="font-size:12.5px; font-weight:500; color:var(--accent2); margin-bottom:10px; letter-spacing:0.5px; display:flex; justify-content:space-between; align-items:center;">
+                        <span>POSITION #${i + 1} <span style="color:var(--gold); font-weight:400; margin-left:8px;">(${totalCargoShare.toFixed(1)}% OF TOTAL)</span></span>
+                        <span style="color:${isOverallOver ? 'var(--red)' : 'var(--muted)'}; font-size:14.5px;">${wt.toFixed(1)}t Total</span>
                     </div>
-                    <div class="data-row" style="font-size:14px; margin-bottom:6px;">
-                        <span class="data-lbl" style="font-weight:700;">40FR (TOP)</span>
-                        <span class="data-val" style="color:${topOver ? 'var(--red)' : '#60a5fa'}; font-weight:800;">
-                            ${topWt.toFixed(1)}t / ${maxTop}t <span style="font-size:11px; opacity:0.8">(${topPerc.toFixed(1)}%)</span>
+                    <div class="data-row" style="font-size:15.5px; margin-bottom:6px;">
+                        <span class="data-lbl" style="font-weight:400;">40FR (TOP)</span>
+                        <span class="data-val" style="color:${topOver ? 'var(--red)' : '#60a5fa'}; font-weight:500;">
+                            ${topWt.toFixed(1)}t / ${maxTop}t <span style="font-size:12px; opacity:0.8">(${topPerc.toFixed(1)}%)</span>
                         </span>
                     </div>
                 `;
                 if (state.isSandwich) {
                     html += `
-                        <div class="data-row" style="font-size:14px; margin-bottom:0;">
-                            <span class="data-lbl" style="font-weight:700;">40FR (BTM)</span>
-                            <span class="data-val" style="color:${btmOver ? 'var(--red)' : 'var(--green)'}; font-weight:800;">
-                                ${btmWt.toFixed(1)}t / ${maxBtm}t <span style="font-size:11px; opacity:0.8">(${btmPerc.toFixed(1)}%)</span>
+                        <div class="data-row" style="font-size:15.5px; margin-bottom:0;">
+                            <span class="data-lbl" style="font-weight:400;">40FR (BTM)</span>
+                            <span class="data-val" style="color:${btmOver ? 'var(--red)' : 'var(--green)'}; font-weight:500;">
+                                ${btmWt.toFixed(1)}t / ${maxBtm}t <span style="font-size:12px; opacity:0.8">(${btmPerc.toFixed(1)}%)</span>
                             </span>
                         </div>
                     `;
@@ -1380,6 +1510,17 @@
             document.getElementById('s-orient').textContent = state.orient === 'along' ? 'Along Side' : 'Athwartship';
             document.getElementById('s-fr').textContent = `${LInfo.frCount} Units`;
             document.getElementById('s-kill').textContent = `${LInfo.totalTEU} TEU`;
+
+            const lStats = document.getElementById('lashing-stats');
+            const lTable = document.getElementById('lashing-table-overlay');
+            if (lStats) lStats.style.display = state.showLashing ? 'block' : 'none';
+            if (lTable) {
+                lTable.style.display = state.showLashing ? 'block' : 'none';
+                if (state.showLashing) {
+                    updateLashingTable(LInfo);
+                    updateLashingResults(LInfo);
+                }
+            }
 
             if (state.view === '3d') {
                 cv3.style.display = 'block';
@@ -1509,6 +1650,134 @@
             };
         }
 
+        /* ──────── LASHING VISUALIZATION ──────── */
+        function drawLashings(L) {
+            const width = 0.1; // 10cm
+            const BASE_H = 0.25;
+            const topY_red = BASE_H + L.bbkArrH + 0.02; // Closer to surface for "printed" look
+            const topY_blue = BASE_H + L.bbkArrH + 0.03;
+
+            // Transverse (T#)
+            const lashingColor = 0xea580c;
+            for (let i = 0; i < state.tLashCount; i++) {
+                const x = state.tLashCount > 1
+                    ? L.minX + (i / (state.tLashCount - 1)) * L.bbkArrL
+                    : L.minX + L.bbkArrL / 2;
+
+                const points = [
+                    new THREE.Vector3(x, 0, -L.totalWid / 2),
+                    new THREE.Vector3(x, BASE_H, -L.totalWid / 2),
+                    new THREE.Vector3(x, topY_blue, L.minZ - 0.05),
+                    new THREE.Vector3(x, topY_blue, L.maxZ + 0.05),
+                    new THREE.Vector3(x, BASE_H, L.totalWid / 2),
+                    new THREE.Vector3(x, 0, L.totalWid / 2)
+                ];
+                createLashingMesh(points, width, lashingColor, true);
+
+                // Compact printed label
+                const labelPos = new THREE.Vector3(x, BASE_H + L.bbkArrH + 0.04, L.minZ + 1.2);
+                addLabel(`T${i + 1}`, labelPos, '#000000', 0.42, true, new THREE.Euler(-Math.PI / 2, 0, 0));
+            }
+
+            // Longitudinal (L#)
+            for (let i = 0; i < state.lLashCount; i++) {
+                const z = state.lLashCount > 1
+                    ? L.minZ + (i / (state.lLashCount - 1)) * L.bbkArrW
+                    : L.minZ + L.bbkArrW / 2;
+
+                const points = [
+                    new THREE.Vector3(-L.totalLen / 2, 0, z),
+                    new THREE.Vector3(-L.totalLen / 2, BASE_H, z),
+                    new THREE.Vector3(L.minX - 0.05, topY_red, z),
+                    new THREE.Vector3(L.maxX + 0.05, topY_red, z),
+                    new THREE.Vector3(L.totalLen / 2, BASE_H, z),
+                    new THREE.Vector3(L.totalLen / 2, 0, z)
+                ];
+                createLashingMesh(points, width, lashingColor, false);
+
+                // Compact printed label
+                const labelPos = new THREE.Vector3(L.minX + 1.5, BASE_H + L.bbkArrH + 0.045, z);
+                addLabel(`L${i + 1}`, labelPos, '#000000', 0.42, true, new THREE.Euler(-Math.PI / 2, 0, 0));
+            }
+        }
+
+
+        let lashingTex = null;
+        function getLashingTexture() {
+            if (lashingTex) return lashingTex;
+            const cv = document.createElement('canvas');
+            cv.width = 128; cv.height = 128;
+            const ctx = cv.getContext('2d');
+            // Vibrant Orange Background (as in image)
+            ctx.fillStyle = '#ff6a00';
+            ctx.fillRect(0, 0, 128, 128);
+            // Black Dashed Line in the center
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 10;
+            ctx.setLineDash([20, 15]);
+            ctx.beginPath();
+            ctx.moveTo(0, 64);
+            ctx.lineTo(128, 64);
+            ctx.stroke();
+
+            lashingTex = new THREE.CanvasTexture(cv);
+            lashingTex.wrapS = THREE.RepeatWrapping;
+            lashingTex.repeat.set(1, 1);
+            return lashingTex;
+        }
+
+        function createLashingMesh(points, width, color, isTransverse) {
+            const tex = getLashingTexture();
+            const mat = new THREE.MeshStandardMaterial({
+                map: tex,
+                emissive: '#ff6a00',
+                emissiveIntensity: 0.1,
+                roughness: 0.8,
+                metalness: 0.1,
+                side: THREE.DoubleSide,
+                transparent: false,
+                depthTest: true,
+                polygonOffset: true,
+                polygonOffsetFactor: -10,
+                polygonOffsetUnits: -10
+            });
+
+            for (let i = 0; i < points.length - 1; i++) {
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const dist = p1.distanceTo(p2);
+                if (dist < 0.01) continue;
+
+                const geo = new THREE.BoxGeometry(width, 0.02, dist);
+                // Adjust UVs for the texture to repeat along the length
+                const uvs = geo.attributes.uv.array;
+                for (let j = 0; j < uvs.length; j += 2) {
+                    // uvs[j] is U, uvs[j+1] is V
+                    // We want V to repeat along the length (Z axis of box)
+                    if (uvs[j + 1] > 0.5) uvs[j + 1] = dist * 2; // Repeat every 0.5m
+                    else uvs[j + 1] = 0;
+                }
+
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.frustumCulled = false;
+                mesh.renderOrder = 999;
+                mesh.castShadow = false;
+
+                const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+                mesh.position.copy(mid);
+
+                const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+                let upVec = new THREE.Vector3(0, 1, 0);
+                if (Math.abs(dir.y) > 0.8) {
+                    upVec = isTransverse ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
+                }
+                mesh.up.copy(upVec);
+                mesh.lookAt(p2);
+
+                grp.add(mesh);
+            }
+        }
+
         /* ──────── 3D RENDER ──────── */
         function build3D(L) {
             while (grp.children.length) grp.remove(grp.children[0]);
@@ -1589,24 +1858,12 @@
                 cEdges.scale.copy(cMesh.scale);
                 cGrp.add(cEdges);
 
-                // create label and add to cGrp explicitly
-                const cv = document.createElement('canvas');
-                cv.width = 120; cv.height = 40;
-                const ctx = cv.getContext('2d');
-                ctx.clearRect(0, 0, 120, 40);
-                ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 4;
-                ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 24px Outfit, sans-serif';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(`[${idx + 1}]`, 60, 20);
-                const tex = new THREE.CanvasTexture(cv); tex.needsUpdate = true;
-                const sMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
-                const spr = new THREE.Sprite(sMat);
-                spr.scale.set(1.2, 0.4, 1); // approximate 400x100 ratio
-                spr.position.set(0, c.H / 2 + 0.3, 0);
-                cGrp.add(spr);
-
                 grp.add(cGrp);
             });
+
+            if (state.showLashing) {
+                drawLashings(L);
+            }
 
 
 
@@ -1624,6 +1881,13 @@
                 if (c_gapY > 0.05) {
                     addGapLine(new THREE.Vector3(c.x, c_cargoTopY, c.z), new THREE.Vector3(c.x, slotCeiling, c.z));
                     addLabel(`${c_gapY.toFixed(2)}m`, new THREE.Vector3(c.x + 0.15, c_cargoTopY + c_gapY / 2, c.z + 0.15), labelCol, 0.35);
+
+                    // Bulk index ABOVE the gap label
+                    const indexPos = new THREE.Vector3(c.x + 0.15, c_cargoTopY + c_gapY / 2 + 0.25, c.z + 0.15);
+                    addLabel(`[${idx + 1}]`, indexPos, '#ef4444', 0.4);
+                } else {
+                    // Default position if no gap
+                    addLabel(`[${idx + 1}]`, new THREE.Vector3(c.x, c_cargoTopY + 0.3, c.z), '#ef4444', 0.4);
                 }
 
                 // Smart Visibility-based distances (Centered on min cargo face)
@@ -1748,28 +2012,92 @@
             const d2 = new THREE.Mesh(dotGeo, mat); d2.position.copy(p2); grp.add(d2);
         }
 
+        function updateLashingTable(L) {
+            const tbl = document.getElementById('lashing-data-table');
+            if (!tbl) return;
+
+            let h = `<tr><th>Item</th>`, m = `<tr><td>MSL</td>`, td = `<tr><td>T-Dir</td>`, ld = `<tr><td>L-Dir</td>`;
+            let a = `<tr><td>α [deg]</td>`, b = `<tr><td>β [deg]</td>`, d = `<tr><td>d [m]</td>`;
+
+            const tc = state.tLashCount, lc = state.lLashCount;
+            // dzT is floor distance from BBK edge
+            const dyT = L.bbkArrH, dzT = Math.abs(L.minZ - (-L.totalWid / 2));
+            // alpha with vertical face
+            const alphaT = Math.atan2(dzT, dyT) * (180 / Math.PI);
+
+            for (let i = 0; i < tc; i++) {
+                h += `<th>T${i + 1}</th>`; m += `<td>100</td>`; td += `<td>${i % 2 == 0 ? 'PS' : 'SB'}</td>`; ld += `<td>-</td>`;
+                a += `<td>${alphaT.toFixed(0)}°</td>`; b += `<td>0°</td>`; d += `<td>${L.totalWid.toFixed(1)}</td>`;
+            }
+
+            // dxL is floor distance from BBK edge
+            const dyL = L.bbkArrH, dxL = Math.abs((L.minX - 0.05) - (-L.totalLen / 2));
+            // alpha with vertical face
+            const alphaL = Math.atan2(dxL, dyL) * (180 / Math.PI);
+
+            for (let i = 0; i < lc; i++) {
+                h += `<th>L${i + 1}</th>`; m += `<td>100</td>`; td += `<td>-</td>`; ld += `<td>${i % 2 == 0 ? 'Fwd' : 'Aft'}</td>`;
+                a += `<td>${alphaL.toFixed(0)}°</td>`; b += `<td>90°</td>`; d += `<td>${L.totalLen.toFixed(1)}</td>`;
+            }
+            tbl.innerHTML = h + "</tr>" + m + "</tr>" + td + "</tr>" + ld + "</tr>" + a + "</tr>" + b + "</tr>" + d + "</tr>";
+        }
+
+        function updateLashingResults(L) {
+            const at = 5.23, al = 1.99, av = 4.83;
+            // Simplified Sliding Forces
+            const Ft = L.totalWt * (at - 0.3 * (9.81 - av));
+            const Fl = L.totalWt * (al - 0.3 * (9.81 - av));
+            const Mt = Ft * (L.bbkArrH / 2);
+
+            const setText = (id, val, unit) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = `${Math.abs(val).toFixed(1)} ${unit}`;
+            };
+
+            setText('res-t-force', Ft * 15, 'kN');
+            setText('res-l-force', Fl * 15, 'kN');
+            setText('res-tipping', Mt * 15, 'kNm');
+
+            // Capacity
+            const MSL = 100;
+            const CapT = state.tLashCount * MSL * 0.85;
+            const CapL = state.lLashCount * MSL * 0.85;
+            const CapTp = CapT * (L.bbkArrH / 1.5);
+
+            setText('res-t-cap', CapT, 'kN');
+            setText('res-l-cap', CapL, 'kN');
+            setText('res-tp-cap', CapTp, 'kNm');
+        }
+
         function addLabel(text, pos, color, scale, isSurface = false, rotation = null) {
             const cv = document.createElement('canvas');
-            cv.width = 400; cv.height = 100;
+            cv.width = 512; cv.height = 128;
             const ctx = cv.getContext('2d');
-            ctx.clearRect(0, 0, 400, 100);
-            ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
-            ctx.fillStyle = color; ctx.font = 'bold 44px Outfit, sans-serif';
+            ctx.clearRect(0, 0, 512, 128);
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 12; ctx.strokeText(text, 256, 64);
+            ctx.fillStyle = color; ctx.font = 'bold 90px Outfit, sans-serif';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(text, 200, 50);
+            ctx.fillText(text, 256, 64);
             const tex = new THREE.CanvasTexture(cv); tex.needsUpdate = true;
             if (isSurface) {
                 const geo = new THREE.PlaneGeometry(4 * scale, 1 * scale);
-                const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthTest: true });
+                const mat = new THREE.MeshBasicMaterial({
+                    map: tex, transparent: true, side: THREE.DoubleSide,
+                    depthTest: false
+                });
                 const mesh = new THREE.Mesh(geo, mat);
                 mesh.position.copy(pos);
                 if (rotation) mesh.rotation.copy(rotation);
+                mesh.frustumCulled = false;
+                mesh.renderOrder = 2000;
                 grp.add(mesh);
             } else {
                 const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
                 const spr = new THREE.Sprite(mat);
                 spr.scale.set(4 * scale, 1 * scale, 1);
                 spr.position.copy(pos);
+                spr.frustumCulled = false;
+                spr.renderOrder = 2000;
                 grp.add(spr);
             }
         }
@@ -2099,6 +2427,29 @@
                     ctx2.stroke();
                 });
                 ctx2.setLineDash([]);
+            }
+
+            // Draw Lashings in 2D
+            if (state.showLashing) {
+                const orange2d = '#ea580c';
+                ctx2.globalAlpha = 0.6;
+                ctx2.strokeStyle = orange2d; ctx2.lineWidth = 1.5;
+                for (let i = 0; i < state.tLashCount; i++) {
+                    const x = state.tLashCount > 1 ? L.minX + (i / (state.tLashCount - 1)) * L.bbkArrL : L.minX + L.bbkArrL / 2;
+                    const x1 = ox + x * scale;
+                    const y1 = oy - (L.totalWid / 2) * scale;
+                    const y2 = oy + (L.totalWid / 2) * scale;
+                    ctx2.beginPath(); ctx2.moveTo(x1, y1); ctx2.lineTo(x1, y2); ctx2.stroke();
+                }
+
+                for (let i = 0; i < state.lLashCount; i++) {
+                    const z = state.lLashCount > 1 ? L.minZ + (i / (state.lLashCount - 1)) * L.bbkArrW : L.minZ + L.bbkArrW / 2;
+                    const y1 = oy + z * scale;
+                    const x1 = ox - (L.totalLen / 2) * scale;
+                    const x2 = ox + (L.totalLen / 2) * scale;
+                    ctx2.beginPath(); ctx2.moveTo(x1, y1); ctx2.lineTo(x2, y1); ctx2.stroke();
+                }
+                ctx2.globalAlpha = 1.0;
             }
         }
 
