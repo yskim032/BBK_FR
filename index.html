@@ -410,6 +410,24 @@
             box-shadow: 0 0 10px var(--accent-glow);
         }
 
+        .input-field input[type="color"] {
+            height: 44px;
+            padding: 4px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .input-field input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        .input-field input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 6px;
+        }
+
+
+
         .unit-label {
             display: none;
         }
@@ -827,6 +845,13 @@
                     <button class="btn-choice" id="btn-sandwich"
                         style="padding: 4px 12px; font-size: 11px; width: auto;" onclick="toggleSandwich()">OFF</button>
                 </div>
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">🪵
+                        WOODEN TIMBER (20cm)</label>
+                    <button class="btn-choice" id="btn-timber" style="padding: 4px 12px; font-size: 11px; width: auto;"
+                        onclick="toggleTimber()">OFF</button>
+                </div>
                 <div id="warn" class="warn-box">⚠ CARGO EXCEEDS ARRANGEMENT</div>
 
                 <div class="input-field" style="margin-top:16px;">
@@ -870,6 +895,46 @@
                     <div class="input-field">
                         <label>Longitudinal Count</label>
                         <input type="number" id="lLashCount" min="2" step="1" value="2" oninput="uiUpdate()" />
+                    </div>
+                </div>
+                <div class="input-field" style="margin-top:12px;">
+                    <label>Lashing Type <span id="lashMSLDisplay"
+                            style="color:var(--accent2); font-weight:800;"></span></label>
+                    <select id="lashType" onchange="setLashType(this.value)" style="
+                        background: rgba(0,0,0,0.5); border: 1.5px solid var(--border); border-radius: 8px;
+                        color: #fff; padding: 8px 12px; font-size: 14px; font-weight: 700;
+                        font-family: 'Outfit', sans-serif; outline: none; width: 100%; cursor: pointer;
+                        transition: all 0.2s;">
+                        <option value="strap">Strap (Webbing)</option>
+                        <option value="chain10">Chain 10mm (Grade 80)</option>
+                        <option value="chain13">Chain 13mm (Grade 80)</option>
+                        <option value="chain16">Chain 16mm (Grade 80)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- SLOT KILL CUSTOMIZATION -->
+            <div class="section">
+                <div class="sec-header"><span class="sec-title">Slot-Kill Appearance</span>
+                    <div class="sec-line"></div>
+                </div>
+                <div class="grid-inputs" style="grid-template-columns: 1fr 1fr;">
+                    <div class="input-field">
+                        <label>Box Color</label>
+                        <input type="color" id="skColor" value="#ef4444" oninput="updateSkStyle()" />
+                    </div>
+                    <div class="input-field">
+                        <label>Opacity</label>
+                        <input type="range" id="skOpacity" min="0" max="0.5" step="0.01" value="0.12"
+                            oninput="updateSkStyle()" />
+                    </div>
+                </div>
+                <div class="input-field" style="margin-top:10px;">
+                    <label>Visual Effect</label>
+                    <div class="orient-switch" style="grid-template-columns: 1fr 1fr 1fr; margin-top:5px;">
+                        <button class="btn-choice active" id="sk-none" onclick="setSkEffect('none')">NONE</button>
+                        <button class="btn-choice" id="sk-neon" onclick="setSkEffect('neon')">NEON</button>
+                        <button class="btn-choice" id="sk-rain" onclick="setSkEffect('rainbow')">RAINBOW</button>
                     </div>
                 </div>
             </div>
@@ -987,7 +1052,8 @@
                 <div class="stat-row"><span>Cargo tipping moment</span> <span class="stat-val" id="res-tipping">?</span>
                 </div>
 
-                <div style="color:var(--gold); margin-top:12px; margin-bottom:6px; font-weight:800; font-size:11px;">
+                <div id="res-cap-status"
+                    style="color:var(--gold); margin-top:12px; margin-bottom:6px; font-weight:800; font-size:11px;">
                     SECURING CAPACITY [OK]</div>
                 <div class="stat-row"><span>Trans capacity (kN)</span> <span class="stat-val" id="res-t-cap">?</span>
                 </div>
@@ -1091,7 +1157,19 @@
     <script>
         /* ──────── STATE & PERSISTENCE ──────── */
         let FR_SPEC = { L: 12.192, W: 2.438, H: 1.97, PL: 45.0 };
-        let state = { view: '3d', orient: 'along', frManualCount: null, shape: 'box', isSandwich: false, showLashing: false, tLashCount: 4, lLashCount: 2 };
+        let state = {
+            view: '3d', orient: 'along', frManualCount: null, shape: 'box',
+            isSandwich: false, isTimber: false, showLashing: false, tLashCount: 4, lLashCount: 2,
+            skColor: '#ef4444', skOpacity: 0.12, skEffect: 'none',
+            lashType: 'strap', lashMSL: 100
+        };
+
+        const LASH_MSL_MAP = {
+            'strap': { msl: 100, label: 'Standard Webbing' },
+            'chain10': { msl: 130, label: '10mm Chain' },
+            'chain13': { msl: 200, label: '13mm Chain' },
+            'chain16': { msl: 300, label: '16mm Chain' }
+        };
         let cargosData = [{ id: Date.now(), L: 10.0, W: 4.0, H: 2.8, wt: 25.0, x: 0, z: 0 }];
 
         function saveSystem() {
@@ -1103,9 +1181,25 @@
         function loadSystem() {
             try {
                 const sSpec = localStorage.getItem('BBK_FR_SPEC'); if (sSpec) FR_SPEC = JSON.parse(sSpec);
-                const sState = localStorage.getItem('BBK_STATE'); if (sState) state = JSON.parse(sState);
+                const sState = localStorage.getItem('BBK_STATE'); if (sState) state = Object.assign(state, JSON.parse(sState));
                 const sCargos = localStorage.getItem('BBK_CARGOS'); if (sCargos) cargosData = JSON.parse(sCargos);
             } catch (e) { console.error("Load failed", e); }
+        }
+
+        function updateSkStyle() {
+            state.skColor = document.getElementById('skColor').value;
+            state.skOpacity = parseFloat(document.getElementById('skOpacity').value);
+            saveSystem();
+            uiUpdate();
+        }
+
+        function setSkEffect(eff) {
+            state.skEffect = eff;
+            document.getElementById('sk-none').classList.toggle('active', eff === 'none');
+            document.getElementById('sk-neon').classList.toggle('active', eff === 'neon');
+            document.getElementById('sk-rain').classList.toggle('active', eff === 'rainbow');
+            saveSystem();
+            uiUpdate();
         }
 
         loadSystem();
@@ -1117,6 +1211,21 @@
         document.getElementById('frPL').value = FR_SPEC.PL || 45.0;
         document.getElementById('tLashCount').value = state.tLashCount;
         document.getElementById('lLashCount').value = state.lLashCount;
+        document.getElementById('lashType').value = state.lashType || 'strap';
+
+        function setLashType(type) {
+            state.lashType = type;
+            state.lashMSL = LASH_MSL_MAP[type].msl;
+            syncLashMSLDisplay();
+            saveSystem();
+            uiUpdate();
+        }
+
+        function syncLashMSLDisplay() {
+            const el = document.getElementById('lashMSLDisplay');
+            if (el) el.textContent = `(${state.lashMSL} kN)`;
+        }
+        syncLashMSLDisplay();
 
         function toggleLashing() {
             state.showLashing = !state.showLashing;
@@ -1124,13 +1233,29 @@
             uiUpdate();
         }
 
-        function syncLashingBtn() {
-            const btn = document.getElementById('btnLashing');
-            if (!btn) return;
-            btn.textContent = state.showLashing ? "LASHING: ON" : "LASHING: OFF";
-            btn.style.color = state.showLashing ? "var(--accent2)" : "var(--gold)";
+        function toggleSandwich() {
+            state.isSandwich = !state.isSandwich;
+            syncLashingBtn(); // Reuse sync or separate
+            uiUpdate();
         }
-        syncLashingBtn();
+
+        function toggleTimber() {
+            state.isTimber = !state.isTimber;
+            uiUpdate();
+        }
+
+        function syncToggles() {
+            const bS = document.getElementById('btn-sandwich');
+            if (bS) {
+                bS.textContent = state.isSandwich ? "ON" : "OFF";
+                bS.classList.toggle('active', state.isSandwich);
+            }
+            const bT = document.getElementById('btn-timber');
+            if (bT) {
+                bT.textContent = state.isTimber ? "ON" : "OFF";
+                bT.classList.toggle('active', state.isTimber);
+            }
+        }
 
         /* ──────── THREE.JS CORE ──────── */
         const cv3 = document.getElementById('c3d');
@@ -1179,6 +1304,9 @@
         let dragOffset = new THREE.Vector3();
         let dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
         let isDragging = false;
+
+        let slotKillMeshes = [];
+        let slotKillEdges = [];
 
         let dragObjIdx = -1; // track globally
 
@@ -1652,8 +1780,9 @@
 
         /* ──────── LASHING VISUALIZATION ──────── */
         function drawLashings(L) {
+            const timberH = state.isTimber ? 0.2 : 0.0;
             const width = 0.1; // 10cm
-            const BASE_H = 0.25;
+            const BASE_H = 0.25 + timberH;
             const topY_red = BASE_H + L.bbkArrH + 0.02; // Closer to surface for "printed" look
             const topY_blue = BASE_H + L.bbkArrH + 0.03;
 
@@ -1781,6 +1910,8 @@
         /* ──────── 3D RENDER ──────── */
         function build3D(L) {
             while (grp.children.length) grp.remove(grp.children[0]);
+            syncToggles();
+            const timberH = state.isTimber ? 0.2 : 0.0;
             const BASE_H = 0.25;
 
             // Base FRs
@@ -1814,29 +1945,65 @@
             }
 
             // Slot Kills
+            slotKillMeshes = [];
+            slotKillEdges = [];
+
             L.killedSlots.forEach(s => {
                 const geo = new THREE.BoxGeometry(FR_SPEC.L, FR_SPEC.H, FR_SPEC.W);
-                const mat = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.12 });
+                const mat = new THREE.MeshBasicMaterial({
+                    color: state.skColor,
+                    transparent: true,
+                    opacity: state.skOpacity,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
                 const mesh = new THREE.Mesh(geo, mat);
                 const sx = s.x * FR_SPEC.L;
                 const sy = BASE_H + s.y * FR_SPEC.H + FR_SPEC.H / 2;
                 const sz = (s.z - (L.frCount - 1) / 2) * FR_SPEC.W;
                 mesh.position.set(sx, sy, sz);
                 grp.add(mesh);
-                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 3 }));
+
+                const edgeMat = new THREE.LineBasicMaterial({
+                    color: state.skColor,
+                    linewidth: 2,
+                    transparent: true,
+                    opacity: Math.min(1.0, state.skOpacity * 4)
+                });
+                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat);
                 edges.position.copy(mesh.position);
                 grp.add(edges);
+
+                slotKillMeshes.push(mesh);
+                slotKillEdges.push(edges);
             });
 
             // Cargos Grouping
+            const timberMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.8 });
             const allBounds = L.cargos.map(oc => { const oL = L.orient === "along" ? oc.L : oc.W; const oW = L.orient === "along" ? oc.W : oc.L; return { left: oc.x - oL / 2, right: oc.x + oL / 2, top: oc.z - oW / 2, bottom: oc.z + oW / 2, id: oc.id }; });
             L.cargos.forEach((c, idx) => {
-                const cGrp = new THREE.Group();
-                cGrp.position.set(c.x, BASE_H + c.H / 2, c.z);
-                cGrp.userData = { isCargoGrp: true, idx: idx, cD: c };
-
                 const cL = L.orient === 'along' ? c.L : c.W;
                 const cW = L.orient === 'along' ? c.W : c.L;
+
+                // Render Timbers
+                if (state.isTimber) {
+                    const tSpacing = 1.0;
+                    const tCount = Math.max(2, Math.ceil(cL / tSpacing) + 1);
+                    const tLen = cW * 1.1; // 10% longer than cargo width
+                    const tSize = 0.2;
+                    for (let i = 0; i < tCount; i++) {
+                        const tX = c.x - cL / 2 + (i / (tCount - 1)) * cL;
+                        const tGeo = new THREE.BoxGeometry(tSize, tSize, tLen);
+                        const tMesh = new THREE.Mesh(tGeo, timberMat);
+                        tMesh.position.set(tX, BASE_H + tSize / 2, c.z);
+                        grp.add(tMesh);
+                    }
+                }
+
+                const cGrp = new THREE.Group();
+                cGrp.position.set(c.x, BASE_H + timberH + c.H / 2, c.z);
+                cGrp.userData = { isCargoGrp: true, idx: idx, cD: c };
+
                 const cMat = new THREE.MeshStandardMaterial({
                     color: c.color || L.bbkColor, roughness: 0.4, metalness: 0.2, emissive: c.color || L.bbkColor, emissiveIntensity: 0.05
                 });
@@ -2016,57 +2183,141 @@
             const tbl = document.getElementById('lashing-data-table');
             if (!tbl) return;
 
-            let h = `<tr><th>Item</th>`, m = `<tr><td>MSL</td>`, td = `<tr><td>T-Dir</td>`, ld = `<tr><td>L-Dir</td>`;
+            let h = `<tr><th>ITEM</th>`, m = `<tr><td>MSL</td>`, td = `<tr><td>T-Dir</td>`, ld = `<tr><td>L-Dir</td>`;
             let a = `<tr><td>α [deg]</td>`, b = `<tr><td>β [deg]</td>`, d = `<tr><td>d [m]</td>`;
 
             const tc = state.tLashCount, lc = state.lLashCount;
-            // dzT is floor distance from BBK edge
-            const dyT = L.bbkArrH, dzT = Math.abs(L.minZ - (-L.totalWid / 2));
-            // alpha with vertical face
-            const alphaT = Math.atan2(dzT, dyT) * (180 / Math.PI);
+            const dyT = L.bbkArrH;
+            const dzT = Math.max(0.1, Math.abs((L.totalWid / 2) - (L.bbkArrW / 2)));
+            const alphaT = Math.atan2(dyT, dzT) * (180 / Math.PI);
 
-            for (let i = 0; i < tc; i++) {
-                h += `<th>T${i + 1}</th>`; m += `<td>100</td>`; td += `<td>${i % 2 == 0 ? 'PS' : 'SB'}</td>`; ld += `<td>-</td>`;
-                a += `<td>${alphaT.toFixed(0)}°</td>`; b += `<td>0°</td>`; d += `<td>${L.totalWid.toFixed(1)}</td>`;
+            const formatAngle = (ang) => {
+                if (ang === 0) return `0°`;
+                const isWarning = ang < 30 || ang > 60;
+                const color = isWarning ? '#ef4444' : '#fbbf24';
+                return `<span style="color:${color}">${ang.toFixed(0)}°</span>`;
+            };
+
+            const addCol = (title, msl, tDir, lDir, angA, angB, dist) => {
+                h += `<th>${title}</th>`;
+                m += `<td>${msl}</td>`;
+                td += `<td>${tDir}</td>`;
+                ld += `<td>${lDir}</td>`;
+                a += `<td>${formatAngle(angA)}</td>`;
+                b += `<td>${formatAngle(angB)}</td>`;
+                d += `<td>${dist.toFixed(1)}</td>`;
+            };
+
+            // Limit columns to prevent UI overlap (Condense if more than 6 in a category)
+            const mslStr = state.lashMSL.toString();
+            if (tc > 6) {
+                addCol(`T1 ~ T${tc}`, mslStr, "PS/SB", "-", alphaT, 0, L.totalWid);
+            } else {
+                for (let i = 0; i < tc; i++) {
+                    addCol(`T${i + 1}`, mslStr, i % 2 == 0 ? 'PS' : 'SB', "-", alphaT, 0, L.totalWid);
+                }
             }
 
-            // dxL is floor distance from BBK edge
-            const dyL = L.bbkArrH, dxL = Math.abs((L.minX - 0.05) - (-L.totalLen / 2));
-            // alpha with vertical face
-            const alphaL = Math.atan2(dxL, dyL) * (180 / Math.PI);
+            const dyL = L.bbkArrH;
+            const dxL = Math.max(0.1, Math.abs((L.totalLen / 2) - (L.bbkArrL / 2)));
+            const alphaL = Math.atan2(dyL, dxL) * (180 / Math.PI);
 
-            for (let i = 0; i < lc; i++) {
-                h += `<th>L${i + 1}</th>`; m += `<td>100</td>`; td += `<td>-</td>`; ld += `<td>${i % 2 == 0 ? 'Fwd' : 'Aft'}</td>`;
-                a += `<td>0°</td>`; b += `<td>${alphaL.toFixed(0)}°</td>`; d += `<td>${L.totalLen.toFixed(1)}</td>`;
+            if (lc > 6) {
+                addCol(`L1 ~ L${lc}`, mslStr, "-", "Fwd/Aft", 0, alphaL, L.totalLen);
+            } else {
+                for (let i = 0; i < lc; i++) {
+                    addCol(`L${i + 1}`, mslStr, "-", i % 2 == 0 ? 'Fwd' : 'Aft', 0, alphaL, L.totalLen);
+                }
             }
+
             tbl.innerHTML = h + "</tr>" + m + "</tr>" + td + "</tr>" + ld + "</tr>" + a + "</tr>" + b + "</tr>" + d + "</tr>";
         }
 
         function updateLashingResults(L) {
-            const at = 5.23, al = 1.99, av = 4.83;
-            // Simplified Sliding Forces
-            const Ft = L.totalWt * (at - 0.3 * (9.81 - av));
-            const Fl = L.totalWt * (al - 0.3 * (9.81 - av));
-            const Mt = Ft * (L.bbkArrH / 2);
+            // IMO CSS Code Annex 13 2003 Edition - Physical Model Parameters
+            const at = 5.23; // Transverse acceleration (m/s2)
+            const al = 1.99; // Longitudinal acceleration (m/s2)
+            const av = 4.83; // Vertical acceleration (m/s2)
+            const g = 9.81;  // Gravity (m/s2)
+            const mu = 0.3;  // Friction coefficient (e.g., steel-timber)
+            const MSL = state.lashMSL || 100; // kN (Dynamic)
+            const CS = MSL / 1.35; // Calculated Strength (kN)
 
-            const setText = (id, val, unit) => {
+            // Geometry & Mass
+            const m = L.totalWt; // mass in tons
+            const Aw = L.bbkArrL * L.bbkArrH; // Transverse wind area (m2)
+            const Al = L.bbkArrW * L.bbkArrH; // Longitudinal wind area (m2)
+
+            // Lever arms for tipping (assuming CG is centered)
+            const a = L.bbkArrH / 2;     // Vertical lever arm
+            const b_t = L.bbkArrW / 2;   // Transverse stableness lever arm
+
+            // ACTUAL FORCES (IMO Annex 13)
+            // Transverse Sliding Force to secure
+            const F_trans = m * at + Aw * 1.0;
+            const F_fric_t = mu * m * (g - av);
+            const Ft_req = Math.max(0, F_trans - F_fric_t);
+
+            // Longitudinal Sliding Force to secure
+            const F_long = m * al + Al * 1.0;
+            const F_fric_l = mu * m * (g - av);
+            const Fl_req = Math.max(0, F_long - F_fric_l);
+
+            // Transverse Tipping Moment to secure
+            const M_trans = F_trans * a;
+            const M_stab_t = m * (g - av) * b_t;
+            const Mt_req = Math.max(0, M_trans - M_stab_t);
+
+            // SECURING CAPACITIES
+            // Angles from Deck (radians)
+            const timberH = state.isTimber ? 0.2 : 0.0;
+            const dyT = L.bbkArrH + timberH;
+            const dzT = Math.max(0.1, Math.abs((L.totalWid / 2) - (L.bbkArrW / 2)));
+            const alphaT = Math.atan2(dyT, dzT);
+
+            const dxL = Math.max(0.1, Math.abs((L.totalLen / 2) - (L.bbkArrL / 2)));
+            const alphaL = Math.atan2(dyT, dxL);
+
+            // Active lashings (half oppose sliding in any one direction)
+            const n_act_T = state.tLashCount / 2;
+            const n_act_L = state.lLashCount / 2;
+
+            // Capacity = n * CS * (cos(a) + mu * sin(a))
+            const CapT = n_act_T * CS * (Math.cos(alphaT) + mu * Math.sin(alphaT));
+            const CapL = n_act_L * CS * (Math.cos(alphaL) + mu * Math.sin(alphaL));
+
+            // Tipping Capacity
+            const d_t = L.totalWid; // Approximate horizontal securing dist
+            const CapTp = n_act_T * CS * d_t * Math.sin(alphaT);
+
+            const setText = (id, val, unit, isOK) => {
                 const el = document.getElementById(id);
-                if (el) el.textContent = `${Math.abs(val).toFixed(1)} ${unit}`;
+                if (el) {
+                    el.textContent = `${val.toFixed(1)} ${unit}`;
+                    if (isOK !== undefined) {
+                        el.style.color = isOK ? "var(--green)" : "var(--red)";
+                    }
+                }
             };
 
-            setText('res-t-force', Ft * 15, 'kN');
-            setText('res-l-force', Fl * 15, 'kN');
-            setText('res-tipping', Mt * 15, 'kNm');
+            setText('res-t-force', Ft_req, 'kN');
+            setText('res-l-force', Fl_req, 'kN');
+            setText('res-tipping', Mt_req, 'kNm');
 
-            // Capacity
-            const MSL = 100;
-            const CapT = state.tLashCount * MSL * 0.85;
-            const CapL = state.lLashCount * MSL * 0.85;
-            const CapTp = CapT * (L.bbkArrH / 1.5);
+            const isTOOK = CapT >= Ft_req;
+            const isLOOK = CapL >= Fl_req;
+            const isTPOK = CapTp >= Mt_req;
+            const isAllOK = isTOOK && isLOOK && isTPOK;
 
-            setText('res-t-cap', CapT, 'kN');
-            setText('res-l-cap', CapL, 'kN');
-            setText('res-tp-cap', CapTp, 'kNm');
+            setText('res-t-cap', CapT, 'kN', isTOOK);
+            setText('res-l-cap', CapL, 'kN', isLOOK);
+            setText('res-tp-cap', CapTp, 'kNm', isTPOK);
+
+            const statusHd = document.getElementById('res-cap-status');
+            if (statusHd) {
+                statusHd.textContent = isAllOK ? "SECURING CAPACITY [OK]" : "SECURING CAPACITY [Not OK]";
+                statusHd.style.color = isAllOK ? "var(--green)" : "var(--red)";
+            }
         }
 
         function addLabel(text, pos, color, scale, isSurface = false, rotation = null) {
@@ -2736,6 +2987,25 @@
 
         (function anim() {
             requestAnimationFrame(anim);
+
+            // Visual Effects for Slot Kills
+            const time = Date.now() * 0.001;
+            if (state.skEffect === 'neon') {
+                const pulse = (Math.sin(time * 4) + 1) / 2;
+                slotKillEdges.forEach(e => {
+                    e.material.opacity = 0.3 + pulse * 0.7;
+                });
+                slotKillMeshes.forEach(m => {
+                    m.material.opacity = state.skOpacity * (0.6 + pulse * 0.4);
+                });
+            } else if (state.skEffect === 'rainbow') {
+                slotKillEdges.forEach((e, i) => {
+                    const hue = (time * 0.6 + i * 0.1) % 1;
+                    e.material.color.setHSL(hue, 0.8, 0.5);
+                    e.material.opacity = 1.0;
+                });
+            }
+
             controls.update();
             if (state.view === '3d' || state.view === 'split') renderer.render(scene, camera);
         })();
