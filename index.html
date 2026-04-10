@@ -2571,8 +2571,15 @@
                 ctx2.strokeStyle = '#ef4444'; ctx2.lineWidth = 1.5; ctx2.strokeRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
                 if (s.x === 0 && s.y === 0) {
                     ctx2.fillStyle = '#ffffff';
-                    ctx2.font = 'bold 15px Outfit'; ctx2.textAlign = 'right'; ctx2.textBaseline = 'middle';
+                    ctx2.font = 'bold 15px Outfit'; ctx2.textBaseline = 'middle';
+
+                    // Left label
+                    ctx2.textAlign = 'right';
                     ctx2.fillText(`40FR #${s.z + 1}`, rx - 15, ry + (FR_SPEC.W / 2) * scale);
+
+                    // Right label
+                    ctx2.textAlign = 'left';
+                    ctx2.fillText(`40FR #${s.z + 1}`, rx + FR_SPEC.L * scale + 15, ry + (FR_SPEC.W / 2) * scale);
                 }
             });
 
