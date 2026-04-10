@@ -1940,8 +1940,10 @@
                     grp.add(sEdges);
                 }
 
-                const labelPos = new THREE.Vector3(-(FR_SPEC.L / 2 + 1.6), BASE_H + 0.02, z);
-                addLabel(`40FR #${i + 1}`, labelPos, '#ffffff', 0.8, true, new THREE.Euler(-Math.PI / 2, 0, 0));
+                const labelPosLeft = new THREE.Vector3(-(FR_SPEC.L / 2 + 1.6), BASE_H + 0.02, z);
+                addLabel(`40FR #${i + 1}`, labelPosLeft, '#ffffff', 0.8, true, new THREE.Euler(-Math.PI / 2, 0, 0));
+                const labelPosRight = new THREE.Vector3(FR_SPEC.L / 2 + 1.6, BASE_H + 0.02, z);
+                addLabel(`40FR #${i + 1}`, labelPosRight, '#ffffff', 0.8, true, new THREE.Euler(-Math.PI / 2, Math.PI, 0));
             }
 
             // Slot Kills
