@@ -13,6 +13,8 @@
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.4.5/gifshot.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
             --bg: #030712;
@@ -805,6 +807,15 @@
             <button class="view-btn" id="btnLashing" onclick="toggleLashing()"
                 style="border-left: 1px solid var(--border); margin-left: 8px; color: var(--gold);">LASHING:
                 OFF</button>
+            <button class="view-btn" id="btnWarningFix" onclick="toggleWarningFix()"
+                style="border-left: 1px solid var(--border); margin-left: 8px; color: var(--red);">WARNING FIX:
+                ON</button>
+            <button class="view-btn" id="btnVLashing" onclick="toggleVLashing()"
+                style="border-left: 1px solid var(--border); margin-left: 8px; color: var(--accent2);">V-LASHING:
+                ON</button>
+            <button class="view-btn" id="btnPDF" onclick="downloadPDF()"
+                style="border-left: 1px solid var(--border); margin-left: 8px; color: #fbbf24; font-weight:800;">REPORT
+                PDF</button>
         </div>
         <div class="spacer" style="flex: 2;"></div>
         <div class="signature-final">
@@ -887,14 +898,24 @@
                 <div class="sec-header"><span class="sec-title">Lashing Simulation</span>
                     <div class="sec-line"></div>
                 </div>
-                <div class="grid-inputs">
+                <div class="grid-inputs" style="margin-bottom: 12px;">
                     <div class="input-field">
                         <label>Transverse Count</label>
-                        <input type="number" id="tLashCount" min="2" step="1" value="4" oninput="uiUpdate()" />
+                        <input type="number" id="tLashCount" min="0" step="1" value="4" oninput="uiUpdate()" />
                     </div>
                     <div class="input-field">
                         <label>Longitudinal Count</label>
-                        <input type="number" id="lLashCount" min="2" step="1" value="2" oninput="uiUpdate()" />
+                        <input type="number" id="lLashCount" min="0" step="1" value="2" oninput="uiUpdate()" />
+                    </div>
+                </div>
+                <div class="grid-inputs">
+                    <div class="input-field">
+                        <label>Transverse (V) Count</label>
+                        <input type="number" id="tVLashCount" min="0" step="1" value="2" oninput="uiUpdate()" />
+                    </div>
+                    <div class="input-field">
+                        <label>Longitudinal (V) Count</label>
+                        <input type="number" id="lVLashCount" min="0" step="1" value="2" oninput="uiUpdate()" />
                     </div>
                 </div>
                 <div class="input-field" style="margin-top:12px;">
@@ -1160,8 +1181,9 @@
         let state = {
             view: '3d', orient: 'along', frManualCount: null, shape: 'box',
             isSandwich: false, isTimber: false, showLashing: false, tLashCount: 4, lLashCount: 2,
+            tVLashCount: 2, lVLashCount: 2,
             skColor: '#ef4444', skOpacity: 0.12, skEffect: 'none',
-            lashType: 'strap', lashMSL: 100
+            lashType: 'strap', lashMSL: 100, zoom2D: 1.0, showWarningLash: true, showVLashing: true
         };
 
         const LASH_MSL_MAP = {
@@ -1211,6 +1233,8 @@
         document.getElementById('frPL').value = FR_SPEC.PL || 45.0;
         document.getElementById('tLashCount').value = state.tLashCount;
         document.getElementById('lLashCount').value = state.lLashCount;
+        document.getElementById('tVLashCount').value = state.tVLashCount;
+        document.getElementById('lVLashCount').value = state.lVLashCount;
         document.getElementById('lashType').value = state.lashType || 'strap';
 
         function setLashType(type) {
@@ -1227,20 +1251,79 @@
         }
         syncLashMSLDisplay();
 
+        function syncWarningFixBtn() {
+            const btn = document.getElementById('btnWarningFix');
+            if (btn) {
+                btn.textContent = `WARNING FIX: ${state.showWarningLash ? 'ON' : 'OFF'}`;
+                btn.style.color = state.showWarningLash ? 'var(--red)' : '#10b981';
+            }
+        }
+        syncWarningFixBtn();
+
+        function syncVLashingBtn() {
+            const btn = document.getElementById('btnVLashing');
+            if (btn) {
+                btn.textContent = `V-LASHING: ${state.showVLashing ? 'ON' : 'OFF'}`;
+                btn.style.color = state.showVLashing ? 'var(--accent2)' : '#10b981';
+            }
+        }
+        syncVLashingBtn();
+
+        function toggleVLashing() {
+            state.showVLashing = !state.showVLashing;
+            if (state.showVLashing) {
+                state.tVLashCount = 2; // Always reset to 2 when toggling ON
+                state.lVLashCount = 2; // Always reset to 2 when toggling ON
+            } else {
+                state.tVLashCount = 0;
+                state.lVLashCount = 0;
+            }
+            // Update inputs
+            document.getElementById('tVLashCount').value = state.tVLashCount;
+            document.getElementById('lVLashCount').value = state.lVLashCount;
+
+            syncVLashingBtn();
+            saveSystem();
+            uiUpdate();
+        }
+
+        function toggleWarningFix() {
+            state.showWarningLash = !state.showWarningLash;
+            syncWarningFixBtn();
+            saveSystem();
+            uiUpdate();
+        }
+
+        function syncLashingBtn() {
+            const btn = document.getElementById('btnLashing');
+            if (btn) {
+                btn.textContent = `LASHING: ${state.showLashing ? 'ON' : 'OFF'}`;
+                btn.style.color = state.showLashing ? '#ec4899' : '#10b981';
+                btn.style.fontWeight = '800';
+            }
+        }
+
         function toggleLashing() {
             state.showLashing = !state.showLashing;
             syncLashingBtn();
+            saveSystem();
             uiUpdate();
         }
 
         function toggleSandwich() {
             state.isSandwich = !state.isSandwich;
-            syncLashingBtn(); // Reuse sync or separate
+            const btn = document.getElementById('btn-sandwich');
+            if (btn) {
+                btn.textContent = state.isSandwich ? 'ON' : 'OFF';
+                btn.classList.toggle('active', state.isSandwich);
+            }
+            saveSystem();
             uiUpdate();
         }
 
         function toggleTimber() {
             state.isTimber = !state.isTimber;
+            saveSystem();
             uiUpdate();
         }
 
@@ -1259,7 +1342,7 @@
 
         /* ──────── THREE.JS CORE ──────── */
         const cv3 = document.getElementById('c3d');
-        const renderer = new THREE.WebGLRenderer({ canvas: cv3, antialias: true, alpha: false });
+        const renderer = new THREE.WebGLRenderer({ canvas: cv3, antialias: true, alpha: false, preserveDrawingBuffer: true });
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1528,6 +1611,8 @@
             }
             state.tLashCount = parseInt(document.getElementById('tLashCount').value) || 0;
             state.lLashCount = parseInt(document.getElementById('lLashCount').value) || 0;
+            state.tVLashCount = parseInt(document.getElementById('tVLashCount').value) || 0;
+            state.lVLashCount = parseInt(document.getElementById('lVLashCount').value) || 0;
             saveSystem();
 
             const LInfo = getLayout();
@@ -1778,33 +1863,114 @@
             };
         }
 
-        /* ──────── LASHING VISUALIZATION ──────── */
-        function drawLashings(L) {
+        function getLashingReport(L) {
+            const m = L.totalWt;
+            const MSL = state.lashMSL || 100;
+            const CS = MSL / 1.35;
+            const mu = 0.3;
+            const g = 9.81;
+            const at = 5.23, al = 1.99, av = 4.83;
+
+            const Aw = L.bbkArrL * L.bbkArrH, Al = L.bbkArrW * L.bbkArrH;
+            const a_arm = L.bbkArrH / 2, b_t = L.bbkArrW / 2;
+
+            const F_trans = m * at + Aw * 1.0;
+            const F_fric_t = mu * m * (g - av);
+            const Ft_req = Math.max(0, F_trans - F_fric_t);
+
+            const F_long = m * al + Al * 1.0;
+            const F_fric_l = mu * m * (g - av);
+            const Fl_req = Math.max(0, F_long - F_fric_l);
+
+            const M_trans = F_trans * a_arm;
+            const M_stab_t = m * (g - av) * b_t;
+            const Mt_req = Math.max(0, M_trans - M_stab_t);
+
             const timberH = state.isTimber ? 0.2 : 0.0;
-            const width = 0.1; // 10cm
-            const BASE_H = 0.25 + timberH;
-            const topY_red = BASE_H + L.bbkArrH + 0.02; // Closer to surface for "printed" look
-            const topY_blue = BASE_H + L.bbkArrH + 0.03;
+            const dyTop = L.bbkArrH + timberH;
+            const dyMid = L.bbkArrH / 2 + timberH;
+
+            // Standard Angles
+            const dzPS = Math.max(0.1, L.minZ - (-L.totalWid / 2));
+            const dzSB = Math.max(0.1, (L.totalWid / 2) - L.maxZ);
+            const aTPS = Math.atan2(dyTop, dzPS), aTSB = Math.atan2(dyTop, dzSB);
+
+            const dxFwd = Math.max(0.1, L.minX - (-L.totalLen / 2));
+            const dxAft = Math.max(0.1, (L.totalLen / 2) - L.maxX);
+            const aLFwd = Math.atan2(dyTop, dxFwd), aLAft = Math.atan2(dyTop, dxAft);
+
+            // V-Lashing Angles (Anchored at mid-height)
+            const aVTPS = Math.atan2(dyMid, dzPS), aVTSB = Math.atan2(dyMid, dzSB);
+            const aVLFwd = Math.atan2(dyMid, dxFwd), aVLAft = Math.atan2(dyMid, dxAft);
+
+            // SECURING CAPACITY
+            const nT = state.tLashCount / 2;
+            const nL = state.lLashCount / 2;
+            const nTV = state.tVLashCount; // Corner-to-FR pairs
+            const nLV = state.lVLashCount;
+
+            // Standard Power
+            let CapT_base = nT * CS * (Math.cos(aTPS) + mu * Math.sin(aTPS));
+            let CapL_base = nL * CS * (Math.cos(aLFwd) + mu * Math.sin(aLFwd));
+
+            // V-Lashing Power (Simplified: corner is 45 deg beta, inner is 30 deg beta)
+            // f_x = cos(alpha)*cos(beta), f_y = sin(alpha), f_z = cos(alpha)*sin(beta)
+            // We assume V-lashing adds to Trans and Long.
+            const betaCorner = 45 * Math.PI / 180;
+            const betaInner = 30 * Math.PI / 180;
+
+            // TV additions (usually securing against Trans sliding)
+            // nTV is pairs of V-legs per corner area
+            const CapT_V = nTV * CS * (Math.cos(aVTPS) * Math.cos(betaInner) + mu * Math.sin(aVTPS));
+            const CapL_V = nLV * CS * (Math.cos(aVLFwd) * Math.cos(betaInner) + mu * Math.sin(aVLFwd));
+
+            const CapT = CapT_base + CapT_V;
+            const CapL = CapL_base + CapL_V;
+
+            const leverPS = L.maxZ + (L.totalWid / 2), leverSB = (L.totalWid / 2) - L.minZ;
+            const CapTp = nT * CS * Math.min(leverPS, leverSB) * Math.sin(aTPS);
+
+            const isTBad = (CapT < Ft_req || CapTp < Mt_req || (aTPS * 180 / Math.PI) < 30 || (aTPS * 180 / Math.PI) > 60);
+            const isLBad = (CapL < Fl_req || (aLFwd * 180 / Math.PI) < 30 || (aLFwd * 180 / Math.PI) > 60);
+
+            return {
+                isTBad, isLBad,
+                tPSWarn: isTBad, tSBWarn: isTBad, tMidWarn: CapT < Ft_req,
+                lFwdWarn: isLBad, lAftWarn: isLBad, lMidWarn: CapL < Fl_req,
+                Ft_req, Fl_req, Mt_req, CapT, CapL, CapTp,
+                degTPS: aTPS * 180 / Math.PI, degTSB: aTSB * 180 / Math.PI,
+                degLFwd: aLFwd * 180 / Math.PI, degLAft: aLAft * 180 / Math.PI,
+                degVTPS: aVTPS * 180 / Math.PI, degVTSB: aVTSB * 180 / Math.PI,
+                degVLFwd: aVLFwd * 180 / Math.PI, degVLAft: aVLAft * 180 / Math.PI
+            };
+        }
+
+        function drawLashings(L) {
+            const R = getLashingReport(L);
+            const timberH = state.isTimber ? 0.2 : 0.0;
+            const width = 0.1;
+            const DECK_H = 0.25;
+            const CARGO_BTM_Y = DECK_H + timberH;
+            const topY_red = CARGO_BTM_Y + L.bbkArrH + 0.01;
+            const topY_blue = CARGO_BTM_Y + L.bbkArrH + 0.02;
+
+            const lashingColor = 0xea580c;
 
             // Transverse (T#)
-            const lashingColor = 0xea580c;
             for (let i = 0; i < state.tLashCount; i++) {
                 const x = state.tLashCount > 1
                     ? L.minX + (i / (state.tLashCount - 1)) * L.bbkArrL
                     : L.minX + L.bbkArrL / 2;
 
                 const points = [
-                    new THREE.Vector3(x, 0, -L.totalWid / 2),
-                    new THREE.Vector3(x, BASE_H, -L.totalWid / 2),
+                    new THREE.Vector3(x, DECK_H, -L.totalWid / 2),
                     new THREE.Vector3(x, topY_blue, L.minZ - 0.05),
                     new THREE.Vector3(x, topY_blue, L.maxZ + 0.05),
-                    new THREE.Vector3(x, BASE_H, L.totalWid / 2),
-                    new THREE.Vector3(x, 0, L.totalWid / 2)
+                    new THREE.Vector3(x, DECK_H, L.totalWid / 2)
                 ];
-                createLashingMesh(points, width, lashingColor, true);
+                createLashingMesh(points, width, lashingColor, true, [R.tPSWarn, R.tMidWarn, R.tSBWarn]);
 
-                // Compact printed label
-                const labelPos = new THREE.Vector3(x, BASE_H + L.bbkArrH + 0.04, L.minZ + 1.2);
+                const labelPos = new THREE.Vector3(x, topY_blue + 0.05, L.minZ + 1.2);
                 addLabel(`T${i + 1}`, labelPos, '#000000', 0.42, true, new THREE.Euler(-Math.PI / 2, 0, 0));
             }
 
@@ -1815,61 +1981,115 @@
                     : L.minZ + L.bbkArrW / 2;
 
                 const points = [
-                    new THREE.Vector3(-L.totalLen / 2, 0, z),
-                    new THREE.Vector3(-L.totalLen / 2, BASE_H, z),
+                    new THREE.Vector3(-L.totalLen / 2 + 0.1, DECK_H, z),
                     new THREE.Vector3(L.minX - 0.05, topY_red, z),
                     new THREE.Vector3(L.maxX + 0.05, topY_red, z),
-                    new THREE.Vector3(L.totalLen / 2, BASE_H, z),
-                    new THREE.Vector3(L.totalLen / 2, 0, z)
+                    new THREE.Vector3(L.totalLen / 2 - 0.1, DECK_H, z)
                 ];
-                createLashingMesh(points, width, lashingColor, false);
+                createLashingMesh(points, width, lashingColor, false, [R.lFwdWarn, R.lMidWarn, R.lAftWarn]);
 
-                // Compact printed label
-                const labelPos = new THREE.Vector3(L.minX + 1.5, BASE_H + L.bbkArrH + 0.045, z);
+                const labelPos = new THREE.Vector3(L.minX + 1.5, topY_red + 0.05, z);
                 addLabel(`L${i + 1}`, labelPos, '#000000', 0.42, true, new THREE.Euler(-Math.PI / 2, 0, 0));
+            }
+
+            // V-Lashing Transverse (TV#)
+            const midY = CARGO_BTM_Y + L.bbkArrH / 2;
+            for (let i = 0; i < state.tVLashCount; i++) {
+                const x = state.tVLashCount > 1 ? L.minX + (i / (state.tVLashCount - 1)) * L.bbkArrL : L.minX + L.bbkArrL / 2;
+                const isCor = (i === 0 || i === state.tVLashCount - 1);
+                const s = isCor ? 1.2 : 0.6; // Spread factor
+
+                // PS V-Legs (offset to prevent clipping)
+                const pPS = new THREE.Vector3(x, midY, L.minZ - 0.05);
+                createLashingMesh([pPS, new THREE.Vector3(x - s, DECK_H, -L.totalWid / 2)], width, lashingColor, true, [R.tPSWarn]);
+                createLashingMesh([pPS, new THREE.Vector3(x + s, DECK_H, -L.totalWid / 2)], width, lashingColor, true, [R.tPSWarn]);
+
+                // SB V-Legs (offset to prevent clipping)
+                const pSB = new THREE.Vector3(x, midY, L.maxZ + 0.05);
+                createLashingMesh([pSB, new THREE.Vector3(x - s, DECK_H, L.totalWid / 2)], width, lashingColor, true, [R.tSBWarn]);
+                createLashingMesh([pSB, new THREE.Vector3(x + s, DECK_H, L.totalWid / 2)], width, lashingColor, true, [R.tSBWarn]);
+
+                addLabel(`TV${i + 1}`, new THREE.Vector3(x, midY + 0.15, isCor ? L.minZ - 0.6 : L.minZ - 0.15), '#fff', 0.35);
+            }
+
+            // V-Lashing Longitudinal (LV#)
+            for (let i = 0; i < state.lVLashCount; i++) {
+                const z = state.lVLashCount > 1 ? L.minZ + (i / (state.lVLashCount - 1)) * L.bbkArrW : L.minZ + L.bbkArrW / 2;
+                const isCor = (i === 0 || i === state.lVLashCount - 1);
+                const s = isCor ? 1.2 : 0.6;
+
+                // FWD V-Legs (offset)
+                const pF = new THREE.Vector3(L.minX - 0.05, midY, z);
+                createLashingMesh([pF, new THREE.Vector3(-L.totalLen / 2, DECK_H, z - s)], width, lashingColor, false, [R.lFwdWarn]);
+                createLashingMesh([pF, new THREE.Vector3(-L.totalLen / 2, DECK_H, z + s)], width, lashingColor, false, [R.lFwdWarn]);
+
+                // AFT V-Legs (offset)
+                const pA = new THREE.Vector3(L.maxX + 0.05, midY, z);
+                createLashingMesh([pA, new THREE.Vector3(L.totalLen / 2, DECK_H, z - s)], width, lashingColor, false, [R.lAftWarn]);
+                createLashingMesh([pA, new THREE.Vector3(L.totalLen / 2, DECK_H, z + s)], width, lashingColor, false, [R.lAftWarn]);
+
+                addLabel(`LV${i + 1}`, new THREE.Vector3(isCor ? L.minX - 0.6 : L.minX - 0.15, midY + 0.15, z), '#fff', 0.35);
             }
         }
 
+        let lashingTexMap = {};
+        function getLashingTexture(type) {
+            const isChain = type && type.includes('chain');
+            const key = isChain ? 'chain' : 'strap';
+            if (lashingTexMap[key]) return lashingTexMap[key];
 
-        let lashingTex = null;
-        function getLashingTexture() {
-            if (lashingTex) return lashingTex;
             const cv = document.createElement('canvas');
-            cv.width = 128; cv.height = 128;
+            cv.width = 128; cv.height = 512;
             const ctx = cv.getContext('2d');
-            // Vibrant Orange Background (as in image)
-            ctx.fillStyle = '#ff6a00';
-            ctx.fillRect(0, 0, 128, 128);
-            // Black Dashed Line in the center
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 10;
-            ctx.setLineDash([20, 15]);
-            ctx.beginPath();
-            ctx.moveTo(0, 64);
-            ctx.lineTo(128, 64);
-            ctx.stroke();
 
-            lashingTex = new THREE.CanvasTexture(cv);
-            lashingTex.wrapS = THREE.RepeatWrapping;
-            lashingTex.repeat.set(1, 1);
-            return lashingTex;
+            if (key === 'strap') {
+                ctx.fillStyle = '#ff6a00';
+                ctx.fillRect(0, 0, 128, 512);
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 14;
+                ctx.setLineDash([40, 20]);
+                ctx.beginPath(); ctx.moveTo(64, 0); ctx.lineTo(64, 512); ctx.stroke();
+            } else {
+                ctx.clearRect(0, 0, 128, 512);
+
+                const grad = ctx.createLinearGradient(10, 0, 118, 0);
+                grad.addColorStop(0, '#94a3b8');
+                grad.addColorStop(0.3, '#f1f5f9');
+                grad.addColorStop(0.5, '#ffffff');
+                grad.addColorStop(0.7, '#cbd5e1');
+                grad.addColorStop(1, '#475569');
+
+                ctx.lineWidth = 20;
+                ctx.strokeStyle = grad;
+                ctx.lineCap = 'round';
+
+                for (let i = 0; i < 4; i++) {
+                    const cy = i * 128 + 64;
+                    ctx.beginPath();
+                    // Links now fill more width to eliminate side gaps
+                    ctx.roundRect(8, cy - 60, 112, 120, 48);
+                    ctx.stroke();
+
+                    // Subtle inner shading
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = '#00000033';
+                    ctx.stroke();
+                    ctx.lineWidth = 20;
+                    ctx.strokeStyle = grad;
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(cv);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(1, 1);
+            lashingTexMap[key] = tex;
+            return tex;
         }
 
-        function createLashingMesh(points, width, color, isTransverse) {
-            const tex = getLashingTexture();
-            const mat = new THREE.MeshStandardMaterial({
-                map: tex,
-                emissive: '#ff6a00',
-                emissiveIntensity: 0.1,
-                roughness: 0.8,
-                metalness: 0.1,
-                side: THREE.DoubleSide,
-                transparent: false,
-                depthTest: true,
-                polygonOffset: true,
-                polygonOffsetFactor: -10,
-                polygonOffsetUnits: -10
-            });
+        function createLashingMesh(points, width, color, isTransverse, segmentWarnings) {
+            const tex = getLashingTexture(state.lashType);
+            const isChain = state.lashType && state.lashType.includes('chain');
 
             for (let i = 0; i < points.length - 1; i++) {
                 const p1 = points[i];
@@ -1877,32 +2097,41 @@
                 const dist = p1.distanceTo(p2);
                 if (dist < 0.01) continue;
 
-                const geo = new THREE.BoxGeometry(width, 0.02, dist);
-                // Adjust UVs for the texture to repeat along the length
-                const uvs = geo.attributes.uv.array;
-                for (let j = 0; j < uvs.length; j += 2) {
-                    // uvs[j] is U, uvs[j+1] is V
-                    // We want V to repeat along the length (Z axis of box)
-                    if (uvs[j + 1] > 0.5) uvs[j + 1] = dist * 2; // Repeat every 0.5m
-                    else uvs[j + 1] = 0;
-                }
-
-                const mesh = new THREE.Mesh(geo, mat);
-                mesh.frustumCulled = false;
-                mesh.renderOrder = 999;
-                mesh.castShadow = false;
-
                 const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
-                mesh.position.copy(mid);
-
                 const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
                 let upVec = new THREE.Vector3(0, 1, 0);
                 if (Math.abs(dir.y) > 0.8) {
                     upVec = isTransverse ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
                 }
+
+                const geo = new THREE.PlaneGeometry(width, dist);
+                geo.rotateX(-Math.PI / 2); // Make it flat for path alignment
+
+                const uvs = geo.attributes.uv.array;
+                const linkDens = isChain ? 5 : 2;
+                for (let j = 0; j < uvs.length; j += 2) {
+                    if (uvs[j + 1] > 0.5) uvs[j + 1] = dist * linkDens;
+                    else uvs[j + 1] = 0;
+                }
+
+                const mat = new THREE.MeshStandardMaterial({
+                    map: tex,
+                    emissive: isChain ? 0x222222 : 0xff6a00,
+                    emissiveIntensity: 0.1,
+                    roughness: isChain ? 0.3 : 0.8,
+                    metalness: isChain ? 0.8 : 0.1,
+                    transparent: true,
+                    alphaTest: 0.1,
+                    side: THREE.DoubleSide
+                });
+
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.userData = { isLashing: true, isWarning: !!segmentWarnings[i] };
+                mesh.frustumCulled = false;
+                mesh.renderOrder = 999;
+                mesh.position.copy(mid);
                 mesh.up.copy(upVec);
                 mesh.lookAt(p2);
-
                 grp.add(mesh);
             }
         }
@@ -1935,9 +2164,6 @@
                     const sMesh = new THREE.Mesh(geo, sMat);
                     sMesh.position.set(0, -BASE_H / 2, z);
                     grp.add(sMesh);
-                    const sEdges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x34d399, transparent: true, opacity: 0.5 }));
-                    sEdges.position.copy(sMesh.position);
-                    grp.add(sEdges);
                 }
 
                 const labelPosLeft = new THREE.Vector3(-(FR_SPEC.L / 2 + 1.6), BASE_H + 0.02, z);
@@ -2165,6 +2391,19 @@
                     addLabel(`${val.toFixed(2)}m`, new THREE.Vector3(c.x, faceY + 0.1, myB.bottom + val / 2), labelCol, 0.35);
                 }
             });
+
+            // Direction Labels (FWD, AFT, PS, SB)
+            const dirCol = '#fbbf24';
+            const dirH = BASE_H + 0.05;
+            const edgeX = L.totalLen / 2 + 4.0;
+            const edgeZ = L.totalWid / 2 + 3.0;
+            const rotH = new THREE.Euler(-Math.PI / 2, 0, 0);
+            const dScale = 0.8; // Match 40FR label size
+
+            addLabel("◀ AFT", new THREE.Vector3(-edgeX, dirH, 0), dirCol, dScale, true, rotH);
+            addLabel("FWD ▶", new THREE.Vector3(edgeX, dirH, 0), dirCol, dScale, true, rotH);
+            addLabel("PORT SIDE (PS)", new THREE.Vector3(0, dirH, -edgeZ), dirCol, dScale, true, rotH);
+            addLabel("STBD SIDE (SB)", new THREE.Vector3(0, dirH, edgeZ), dirCol, dScale, true, rotH);
         }
 
         function addGapLine(p1, p2, col = 0x10b981) {
@@ -2184,136 +2423,68 @@
         function updateLashingTable(L) {
             const tbl = document.getElementById('lashing-data-table');
             if (!tbl) return;
+            const R = getLashingReport(L);
 
             let h = `<tr><th>ITEM</th>`, m = `<tr><td>MSL</td>`, td = `<tr><td>T-Dir</td>`, ld = `<tr><td>L-Dir</td>`;
             let a = `<tr><td>α [deg]</td>`, b = `<tr><td>β [deg]</td>`, d = `<tr><td>d [m]</td>`;
 
-            const tc = state.tLashCount, lc = state.lLashCount;
-            const dyT = L.bbkArrH;
-            const dzT = Math.max(0.1, Math.abs((L.totalWid / 2) - (L.bbkArrW / 2)));
-            const alphaT = Math.atan2(dyT, dzT) * (180 / Math.PI);
-
+            const mslStr = (state.lashMSL || 100).toString();
             const formatAngle = (ang) => {
-                if (ang === 0) return `0°`;
+                if (ang === 0 || isNaN(ang) || ang === undefined) return "0°";
                 const isWarning = ang < 30 || ang > 60;
                 const color = isWarning ? '#ef4444' : '#fbbf24';
-                return `<span style="color:${color}">${ang.toFixed(0)}°</span>`;
+                return `<span style="color:${color}">${Math.round(ang)}°</span>`;
             };
 
             const addCol = (title, msl, tDir, lDir, angA, angB, dist) => {
-                h += `<th>${title}</th>`;
-                m += `<td>${msl}</td>`;
-                td += `<td>${tDir}</td>`;
-                ld += `<td>${lDir}</td>`;
-                a += `<td>${formatAngle(angA)}</td>`;
-                b += `<td>${formatAngle(angB)}</td>`;
+                h += `<th>${title}</th>`; m += `<td>${msl}</td>`; td += `<td>${tDir}</td>`;
+                ld += `<td>${lDir}</td>`; a += `<td>${angA}</td>`; b += `<td>${angB}</td>`;
                 d += `<td>${dist.toFixed(1)}</td>`;
             };
 
-            // Limit columns to prevent UI overlap (Condense if more than 6 in a category)
-            const mslStr = state.lashMSL.toString();
-            if (tc > 6) {
-                addCol(`T1 ~ T${tc}`, mslStr, "PS/SB", "-", alphaT, 0, L.totalWid);
-            } else {
-                for (let i = 0; i < tc; i++) {
-                    addCol(`T${i + 1}`, mslStr, i % 2 == 0 ? 'PS' : 'SB', "-", alphaT, 0, L.totalWid);
-                }
+            if (state.tLashCount > 0) {
+                const tTitle = state.tLashCount > 1 ? `T1~T${state.tLashCount}` : `T1`;
+                addCol(`${tTitle} (PS)`, mslStr, "PS", "-", formatAngle(R.degTPS), "0°", L.totalWid);
+                addCol(`${tTitle} (SB)`, mslStr, "SB", "-", formatAngle(R.degTSB), "0°", L.totalWid);
             }
-
-            const dyL = L.bbkArrH;
-            const dxL = Math.max(0.1, Math.abs((L.totalLen / 2) - (L.bbkArrL / 2)));
-            const alphaL = Math.atan2(dyL, dxL) * (180 / Math.PI);
-
-            if (lc > 6) {
-                addCol(`L1 ~ L${lc}`, mslStr, "-", "Fwd/Aft", 0, alphaL, L.totalLen);
-            } else {
-                for (let i = 0; i < lc; i++) {
-                    addCol(`L${i + 1}`, mslStr, "-", i % 2 == 0 ? 'Fwd' : 'Aft', 0, alphaL, L.totalLen);
-                }
+            if (state.lLashCount > 0) {
+                const lTitle = state.lLashCount > 1 ? `L1~L${state.lLashCount}` : `L1`;
+                addCol(`${lTitle} (FWD)`, mslStr, "-", "Fwd", formatAngle(R.degLFwd), "0°", L.totalLen);
+                addCol(`${lTitle} (AFT)`, mslStr, "-", "Aft", formatAngle(R.degLAft), "0°", L.totalLen);
             }
-
+            if (state.tVLashCount > 0) {
+                const tvTitle = state.tVLashCount > 1 ? `TV1~TV${state.tVLashCount}` : `TV1`;
+                addCol(`${tvTitle}`, mslStr, "PS/SB", "FWD/AFT", formatAngle(R.degVTPS), "30-45°", L.totalWid / 2);
+            }
+            if (state.lVLashCount > 0) {
+                const lvTitle = state.lVLashCount > 1 ? `LV1~LV${state.lVLashCount}` : `LV1`;
+                addCol(`${lvTitle}`, mslStr, "PS/SB", "FWD/AFT", formatAngle(R.degVLFwd), "30-45°", L.totalLen / 2);
+            }
             tbl.innerHTML = h + "</tr>" + m + "</tr>" + td + "</tr>" + ld + "</tr>" + a + "</tr>" + b + "</tr>" + d + "</tr>";
         }
 
         function updateLashingResults(L) {
-            // IMO CSS Code Annex 13 2003 Edition - Physical Model Parameters
-            const at = 5.23; // Transverse acceleration (m/s2)
-            const al = 1.99; // Longitudinal acceleration (m/s2)
-            const av = 4.83; // Vertical acceleration (m/s2)
-            const g = 9.81;  // Gravity (m/s2)
-            const mu = 0.3;  // Friction coefficient (e.g., steel-timber)
-            const MSL = state.lashMSL || 100; // kN (Dynamic)
-            const CS = MSL / 1.35; // Calculated Strength (kN)
-
-            // Geometry & Mass
-            const m = L.totalWt; // mass in tons
-            const Aw = L.bbkArrL * L.bbkArrH; // Transverse wind area (m2)
-            const Al = L.bbkArrW * L.bbkArrH; // Longitudinal wind area (m2)
-
-            // Lever arms for tipping (assuming CG is centered)
-            const a = L.bbkArrH / 2;     // Vertical lever arm
-            const b_t = L.bbkArrW / 2;   // Transverse stableness lever arm
-
-            // ACTUAL FORCES (IMO Annex 13)
-            // Transverse Sliding Force to secure
-            const F_trans = m * at + Aw * 1.0;
-            const F_fric_t = mu * m * (g - av);
-            const Ft_req = Math.max(0, F_trans - F_fric_t);
-
-            // Longitudinal Sliding Force to secure
-            const F_long = m * al + Al * 1.0;
-            const F_fric_l = mu * m * (g - av);
-            const Fl_req = Math.max(0, F_long - F_fric_l);
-
-            // Transverse Tipping Moment to secure
-            const M_trans = F_trans * a;
-            const M_stab_t = m * (g - av) * b_t;
-            const Mt_req = Math.max(0, M_trans - M_stab_t);
-
-            // SECURING CAPACITIES
-            // Angles from Deck (radians)
-            const timberH = state.isTimber ? 0.2 : 0.0;
-            const dyT = L.bbkArrH + timberH;
-            const dzT = Math.max(0.1, Math.abs((L.totalWid / 2) - (L.bbkArrW / 2)));
-            const alphaT = Math.atan2(dyT, dzT);
-
-            const dxL = Math.max(0.1, Math.abs((L.totalLen / 2) - (L.bbkArrL / 2)));
-            const alphaL = Math.atan2(dyT, dxL);
-
-            // Active lashings (half oppose sliding in any one direction)
-            const n_act_T = state.tLashCount / 2;
-            const n_act_L = state.lLashCount / 2;
-
-            // Capacity = n * CS * (cos(a) + mu * sin(a))
-            const CapT = n_act_T * CS * (Math.cos(alphaT) + mu * Math.sin(alphaT));
-            const CapL = n_act_L * CS * (Math.cos(alphaL) + mu * Math.sin(alphaL));
-
-            // Tipping Capacity
-            const d_t = L.totalWid; // Approximate horizontal securing dist
-            const CapTp = n_act_T * CS * d_t * Math.sin(alphaT);
-
+            const R = getLashingReport(L);
             const setText = (id, val, unit, isOK) => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.textContent = `${val.toFixed(1)} ${unit}`;
-                    if (isOK !== undefined) {
-                        el.style.color = isOK ? "var(--green)" : "var(--red)";
-                    }
+                    if (isOK !== undefined) el.style.color = isOK ? "var(--green)" : "var(--red)";
                 }
             };
 
-            setText('res-t-force', Ft_req, 'kN');
-            setText('res-l-force', Fl_req, 'kN');
-            setText('res-tipping', Mt_req, 'kNm');
+            setText('res-t-force', R.Ft_req, 'kN');
+            setText('res-l-force', R.Fl_req, 'kN');
+            setText('res-tipping', R.Mt_req, 'kNm');
 
-            const isTOOK = CapT >= Ft_req;
-            const isLOOK = CapL >= Fl_req;
-            const isTPOK = CapTp >= Mt_req;
+            const isTOOK = R.CapT >= R.Ft_req;
+            const isLOOK = R.CapL >= R.Fl_req;
+            const isTPOK = R.CapTp >= R.Mt_req;
             const isAllOK = isTOOK && isLOOK && isTPOK;
 
-            setText('res-t-cap', CapT, 'kN', isTOOK);
-            setText('res-l-cap', CapL, 'kN', isLOOK);
-            setText('res-tp-cap', CapTp, 'kNm', isTPOK);
+            setText('res-t-cap', R.CapT, 'kN', isTOOK);
+            setText('res-l-cap', R.CapL, 'kN', isLOOK);
+            setText('res-tp-cap', R.CapTp, 'kNm', isTPOK);
 
             const statusHd = document.getElementById('res-cap-status');
             if (statusHd) {
@@ -2324,16 +2495,18 @@
 
         function addLabel(text, pos, color, scale, isSurface = false, rotation = null) {
             const cv = document.createElement('canvas');
-            cv.width = 512; cv.height = 128;
+            cv.width = 1024; cv.height = 128;
             const ctx = cv.getContext('2d');
-            ctx.clearRect(0, 0, 512, 128);
-            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 12; ctx.strokeText(text, 256, 64);
-            ctx.fillStyle = color; ctx.font = 'bold 90px Outfit, sans-serif';
+            ctx.clearRect(0, 0, 1024, 128);
+            ctx.font = 'bold 90px Outfit, sans-serif';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText(text, 256, 64);
+
+            ctx.fillStyle = color;
+            ctx.fillText(text, 512, 64);
+
             const tex = new THREE.CanvasTexture(cv); tex.needsUpdate = true;
             if (isSurface) {
-                const geo = new THREE.PlaneGeometry(4 * scale, 1 * scale);
+                const geo = new THREE.PlaneGeometry(8 * scale, 1 * scale);
                 const mat = new THREE.MeshBasicMaterial({
                     map: tex, transparent: true, side: THREE.DoubleSide,
                     depthTest: false
@@ -2359,6 +2532,24 @@
         const cv2 = document.getElementById('c2d');
         const ctx2 = cv2.getContext('2d');
 
+        function get2DParams(W, H, LInfo, forcePad = null) {
+            const PAD = (forcePad !== null) ? forcePad : 100;
+            const targetVisualLen = Math.max(LInfo.totalLen, LInfo.bbkArrL + 2);
+            const targetVisualWid = Math.max(LInfo.totalWid, LInfo.bbkArrW + 2);
+            const baseScale = Math.min((W - PAD * 2) / targetVisualLen, (H - PAD * 2) / targetVisualWid, 400);
+            const scale = (forcePad !== null) ? baseScale : baseScale * (state.zoom2D || 1.0);
+            return { scale, ox: W / 2, oy: H / 2 };
+        }
+
+        cv2.addEventListener('wheel', e => {
+            if (state.view !== '2d' && state.view !== 'split') return;
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            state.zoom2D = (state.zoom2D || 1.0) * delta;
+            state.zoom2D = Math.max(0.1, Math.min(20, state.zoom2D));
+            uiUpdate();
+        }, { passive: false });
+
 
         /* ──────── 2D DRAG & DROP ──────── */
         let dragObj2DIdx = -1;
@@ -2369,14 +2560,8 @@
         cv2.addEventListener('pointerdown', e => {
             if (state.view !== '2d' && state.view !== 'split') return;
             const rect = cv2.getBoundingClientRect();
-            const W = rect.width; const H = rect.height;
             const LInfo = getLayout();
-
-            const PAD = 100;
-            const targetVisualLen = Math.max(LInfo.totalLen, LInfo.bbkArrL + 2);
-            const targetVisualWid = Math.max(LInfo.totalWid, LInfo.bbkArrW + 2);
-            const scale = Math.min((W - PAD * 2) / targetVisualLen, (H - PAD * 2) / targetVisualWid, 50);
-            const ox = W / 2; const oy = H / 2;
+            const { scale, ox, oy } = get2DParams(rect.width, rect.height, LInfo);
 
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
@@ -2416,13 +2601,8 @@
         cv2.addEventListener('pointermove', e => {
             if (!isDragging2D || dragObj2DIdx === -1) return;
             const rect = cv2.getBoundingClientRect();
-            const W = rect.width; const H = rect.height;
             const LInfo = getLayout();
-            const PAD = 100;
-            const targetVisualLen = Math.max(LInfo.totalLen, LInfo.bbkArrL + 2);
-            const targetVisualWid = Math.max(LInfo.totalWid, LInfo.bbkArrW + 2);
-            const scale = Math.min((W - PAD * 2) / targetVisualLen, (H - PAD * 2) / targetVisualWid, 50);
-            const ox = W / 2; const oy = H / 2;
+            const { scale, ox, oy } = get2DParams(rect.width, rect.height, LInfo);
 
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
@@ -2509,13 +2689,8 @@
             if (isDragging2D) return; // handled above
             if (state.view !== '2d' && state.view !== 'split') return;
             const rect = cv2.getBoundingClientRect();
-            const W = rect.width; const H = rect.height;
             const LInfo = getLayout();
-            const PAD = 100;
-            const targetVisualLen = Math.max(LInfo.totalLen, LInfo.bbkArrL + 2);
-            const targetVisualWid = Math.max(LInfo.totalWid, LInfo.bbkArrW + 2);
-            const scale = Math.min((W - PAD * 2) / targetVisualLen, (H - PAD * 2) / targetVisualWid, 50);
-            const ox = W / 2; const oy = H / 2;
+            const { scale, ox, oy } = get2DParams(rect.width, rect.height, LInfo);
 
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
@@ -2542,14 +2717,11 @@
             cv2.style.cursor = hit ? 'grab' : 'default';
         });
 
-        function draw2D(L) {
-            const W = cv2.clientWidth; const H = cv2.clientHeight;
+        function draw2D(L, forceW = null, forceH = null) {
+            let W = forceW || cv2.clientWidth; let H = forceH || cv2.clientHeight;
+            if (W <= 0 || H <= 0) { W = 1200; H = 900; }
             cv2.width = W; cv2.height = H; ctx2.clearRect(0, 0, W, H);
-            const PAD = 100;
-            const targetVisualLen = Math.max(L.totalLen, L.bbkArrL + 2);
-            const targetVisualWid = Math.max(L.totalWid, L.bbkArrW + 2);
-            const scale = Math.min((W - PAD * 2) / targetVisualLen, (H - PAD * 2) / targetVisualWid, 50);
-            const ox = W / 2; const oy = H / 2;
+            const { scale, ox, oy } = get2DParams(W, H, L, forceW ? 150 : null);
 
             for (let i = 0; i < L.frCount; i++) {
                 const zOffset = (i - (L.frCount - 1) / 2) * FR_SPEC.W;
@@ -2711,6 +2883,17 @@
                 }
                 ctx2.globalAlpha = 1.0;
             }
+
+            // 2D Direction Labels
+            ctx2.fillStyle = '#fbbf24'; ctx2.font = 'bold 18px Outfit';
+            ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+            const hGap = 110;
+            const vEdgeY = oy - (L.totalWid / 2) * scale - 40;
+
+            ctx2.fillText('AFT ◀', ox - (L.totalLen / 2) * scale - hGap, oy);
+            ctx2.fillText('▶ FWD', ox + (L.totalLen / 2) * scale + hGap, oy);
+            ctx2.fillText('PORT SIDE (PS)', ox, vEdgeY);
+            ctx2.fillText('STBD SIDE (SB)', ox, oy + (L.totalWid / 2) * scale + 40);
         }
 
 
@@ -2910,14 +3093,7 @@
         resize();
         renderCargoRows();
         uiUpdate();
-
-        function toggleSandwich() {
-            state.isSandwich = !state.isSandwich;
-            const btn = document.getElementById('btn-sandwich');
-            btn.textContent = state.isSandwich ? 'ON' : 'OFF';
-            btn.classList.toggle('active', state.isSandwich);
-            uiUpdate();
-        }
+        syncLashingBtn();
 
         async function record360GIF() {
             if (state.view !== '3d' && state.view !== 'split') {
@@ -2994,11 +3170,224 @@
             captureFrame();
         }
 
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const L = getLayout();
+            const R = getLashingReport(L);
+            const now = new Date();
+
+            // 1. Zoom in for 3D Capture
+            const oldCamPos = camera.position.clone();
+            const oldTarget = controls.target.clone();
+
+            // Frame the cargo tightly
+            const maxDim = Math.max(L.bbkArrL, L.bbkArrW, L.bbkArrH);
+            const fitDist = maxDim * 1.2;
+            camera.position.set(fitDist, fitDist * 0.75, fitDist);
+            controls.target.set(0, L.bbkArrH / 2, 0);
+            controls.update();
+
+            // Force high-res render for capture
+            draw2D(L, 2000, 1500); // Guarantees 2D is drawn even if display:none
+            renderer.render(scene, camera);
+
+            // 1. Capture Images AFTER render calls
+            const canvas3D = document.getElementById('c3d');
+            const canvas2D = document.getElementById('c2d');
+            const img3D = canvas3D.toDataURL('image/jpeg', 0.85);
+            const img2D = canvas2D.toDataURL('image/jpeg', 0.85);
+
+            // Restore original 3D view
+            camera.position.copy(oldCamPos);
+            controls.target.copy(oldTarget);
+            controls.update();
+
+            // Config
+            const secondary = [51, 65, 85];
+            const primary = [59, 130, 246];
+            const dateStr = `${now.getFullYear()}.${(now.getMonth() + 1).toString().padStart(2, '0')}.${now.getDate().toString().padStart(2, '0')}`;
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+
+            const drawFooter = (page) => {
+                doc.setPage(page);
+                doc.setTextColor(150); doc.setFontSize(8);
+                doc.text(`Page ${page} of 2 | Ref: BBK-PLN-PR-9.1 | Generated: ${dateStr} ${timeStr}`, 105, 285, { align: 'center' });
+                doc.text("Digital Twin Stowage Planner Pro V9.1 - YS KIM Signature Edition", 105, 290, { align: 'center' });
+            };
+
+            const drawHeader = () => {
+                doc.setFillColor(...secondary); doc.rect(0, 0, 210, 30, 'F');
+                doc.setTextColor(255); doc.setFontSize(22); doc.setFont("helvetica", "bold");
+                doc.text("Lashcon IMO: BBK Stowage Report", 12, 18);
+                doc.setFontSize(9); doc.setFont("helvetica", "normal");
+                doc.text(`DATE: ${dateStr}`, 160, 10);
+                doc.text(`TIME: ${timeStr}`, 160, 15);
+                doc.text(`REF: BBK-PLN-PR-9.1`, 160, 20);
+                doc.line(10, 22, 120, 22);
+                doc.setFontSize(7); doc.text("Code of Safe Practice for Cargo Stowage and Securing 2003, Annex 13", 12, 26);
+            };
+
+            // ──────── PAGE 1: TECHNICAL DATA ────────
+            drawHeader();
+            let y = 45; doc.setTextColor(0);
+
+            // New Section: General View & Summary
+            doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.text("GENERAL VIEW & SUMMARY", 12, y);
+            y += 8; doc.setDrawColor(200); doc.line(12, y, 198, y); y += 10;
+
+            doc.setFontSize(9); doc.setFont("helvetica", "normal");
+            const resOkT = R.CapT >= R.Ft_req;
+            const resOkL = R.CapL >= R.Fl_req;
+            const resOkTp = R.CapTp >= R.Mt_req;
+            const isApproved = resOkT && resOkL && resOkTp;
+
+            const paragraphs = [
+                `SUMMARY: This report details the stowage and securing plan for a break-bulk cargo unit with dimensions of ${L.bbkArrL.toFixed(2)}m (L) x ${L.bbkArrW.toFixed(2)}m (W) x ${L.bbkArrH.toFixed(2)}m (H). The total unit mass is ${L.totalWt.toFixed(1)} MT, stowed on a customized bedding arrangement consisting of ${L.frCount} x 40ft Flat Rack (40FR) units.`,
+                `SECURING: To ensure maritime safety and structural integrity, the securing arrangement utilizes a total of ${state.tLashCount + state.lLashCount + state.tVLashCount + state.lVLashCount} lashing points. Specifically, ${state.tLashCount} transverse belts and ${state.lLashCount} longitudinal belts are deployed (MSL: ${state.lashMSL || 100} kN), supplemented by Vertical/V-style lashings for enhanced stability.`,
+                `ANALYSIS: Based on IMO CSS Code Annex 13 calculations, the security analysis indicates the arrangement is ${isApproved ? 'SUFFICIENT' : 'INSUFFICIENT'} for sea transport. Securing Capacities: Transverse Sliding ${R.CapT.toFixed(1)} kN (Req: ${R.Ft_req.toFixed(1)} kN), Longitudinal Sliding ${R.CapL.toFixed(1)} kN (Req: ${R.Fl_req.toFixed(1)} kN), and Tipping Stability ${R.CapTp.toFixed(1)} kNm (Req: ${R.Mt_req.toFixed(1)} kNm).`,
+                isApproved
+                    ? `CONCLUSION: All securing parameters are within safe limits. The current arrangement provides adequate security against sliding and tipping forces for the intended voyage.`
+                    : `CRITICAL NOTICE: Certain securing parameters are below required safety standards. Items marked as NOT OK in the security analysis must be reinforced prior to departure to ensure safety at sea.`
+            ];
+
+            paragraphs.forEach(p => {
+                const lines = doc.splitTextToSize(p, 185);
+                lines.forEach(line => {
+                    doc.text(line, 12, y);
+                    y += 5;
+                });
+                y += 3; // Gap between paragraphs
+            });
+            y += 5;
+
+            // Section 1: Cargo (Compact)
+            doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.text("1. CARGO UNIT SPECIFICATION", 12, y);
+            y += 8; doc.setDrawColor(200); doc.line(12, y, 198, y); y += 8;
+
+            const drawCell = (x, y, w, h, lbl, val) => {
+                doc.setDrawColor(210); doc.rect(x, y, w, h);
+                doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.text(lbl, x + 2.5, y + 5);
+                doc.setFont("helvetica", "normal"); doc.text(val, x + w - 2.5, y + 5, { align: 'right' });
+            };
+
+            drawCell(12, y, 62, 8, "Dimensions (LxWxH)", `${L.bbkArrL.toFixed(2)} x ${L.bbkArrW.toFixed(2)} x ${L.bbkArrH.toFixed(2)} m`);
+            drawCell(74, y, 45, 8, "Total Mass", `${L.totalWt.toFixed(1)} t`);
+            drawCell(119, y, 35, 8, "Coeff (mu)", "0.30");
+            drawCell(154, y, 44, 8, "Bedding", `${L.frCount}x 40FR`);
+            y += 18;
+
+            // Section 2: Lashing (Compact)
+            doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.text("2. LASHING ARRANGEMENT DATA", 12, y);
+            y += 8; doc.line(12, y, 198, y); y += 8;
+            doc.setFillColor(245, 247, 250); doc.rect(12, y, 186, 8, 'F');
+            doc.setFontSize(8); doc.text("ITEM", 15, y + 5.5);
+            doc.text("L-DIR", 45, y + 5.5); doc.text("T-DIR", 75, y + 5.5);
+            doc.text("MSL (kN)", 105, y + 5.5); doc.text("FIX ANG(alpha)", 135, y + 5.5);
+            doc.text("HOR ANG(beta)", 165, y + 5.5);
+            y += 8.2;
+            const addRow = (item, l, t, msl, a, b) => {
+                doc.setFont("helvetica", "normal");
+                doc.text(item, 15, y + 5); doc.text(l, 45, y + 5); doc.text(t, 75, y + 5);
+                doc.text(msl, 105, y + 5); doc.text(a, 135, y + 5); doc.text(b, 165, y + 5);
+                doc.setDrawColor(230); doc.line(12, y + 7, 198, y + 7);
+                y += 8.2;
+            };
+            const mslStr = (state.lashMSL || 100).toString();
+            if (state.tLashCount > 0) addRow(`T-LASH (PS/SB)`, "-", "PS/SB", mslStr, `${Math.round(R.degTPS)} deg`, "0 deg");
+            if (state.lLashCount > 0) addRow(`L-LASH (FWD/AFT)`, "F/A", "-", mslStr, `${Math.round(R.degLFwd)} deg`, "0 deg");
+            if (state.tVLashCount > 0) addRow(`V-LASH (Trans)`, "F/A", "PS/SB", mslStr, `${Math.round(R.degVTPS)} deg`, "30-45 deg");
+            if (state.lVLashCount > 0) addRow(`V-LASH (Long)`, "F/A", "PS/SB", mslStr, `${Math.round(R.degVLFwd)} deg`, "30-45 deg");
+            y += 18;
+
+            // Section 3: Results
+            doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.text("3. SECURITY ANALYSIS (IMO CSM)", 12, y);
+            y += 8; doc.setDrawColor(...primary); doc.setLineWidth(0.5); doc.line(12, y, 198, y); doc.setLineWidth(0.2); y += 12;
+            const drawResBox = (title, req, cap, ok) => {
+                doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.text(title, 15, y);
+                doc.setFont("helvetica", "normal"); doc.text(`Required: ${req.toFixed(1)} kN`, 55, y);
+                doc.text(`Capacity: ${cap.toFixed(1)} kN`, 105, y);
+                doc.setFont("helvetica", "bold");
+                if (ok) { doc.setTextColor(16, 185, 129); doc.text("STATUS: OK", 160, y); }
+                else { doc.setTextColor(239, 68, 68); doc.text("STATUS: NOT OK", 160, y); }
+                doc.setTextColor(0); y += 10;
+            };
+            drawResBox("TRANSVERSE SLIDING", R.Ft_req, R.CapT, resOkT);
+            drawResBox("LONGITUDINAL SLIDING", R.Fl_req, R.CapL, resOkL);
+            drawResBox("TIPPING STABILITY", R.Mt_req, R.CapTp, resOkTp);
+            drawFooter(1);
+
+            // ──────── PAGE 2: VISUAL EVIDENCE ────────
+            doc.addPage();
+            drawHeader();
+            y = 45;
+            doc.setTextColor(0); doc.setFontSize(11); doc.setFont("helvetica", "bold");
+            doc.text("4. STOWAGE EVIDENCE (DIGITAL TWIN)", 12, y);
+            y += 8; doc.line(12, y, 198, y); y += 12;
+            const cardW = 92, cardH = 75;
+            doc.setDrawColor(...secondary); doc.setLineWidth(0.5);
+            // 3D Visual
+            doc.rect(12, y, cardW, cardH);
+            doc.addImage(img3D, 'JPEG', 12.5, y + 0.5, cardW - 1, cardH - 1);
+            doc.setFontSize(8); doc.text("ISOMETRIC VIEW (3D SIMULATION)", 12, y + cardH + 5);
+            // 2D Visual
+            doc.rect(106, y, cardW, cardH);
+            doc.addImage(img2D, 'JPEG', 106.5, y + 0.5, cardW - 1, cardH - 1);
+            doc.text("LOADING PLAN (2D CENTER PLAN)", 106, y + cardH + 5);
+            y += cardH + 25;
+            doc.setFillColor(...secondary); doc.rect(12, y, 186, 15, 'F');
+            doc.setTextColor(255); doc.setFontSize(10);
+            const statusText = (resOkT && resOkL && resOkTp) ? "CARGO SECURING SUFFICIENT - APPROVED FOR SEA TRANSPORT" : "CARGO SECURING INSUFFICIENT - REQUIRES REVISION";
+            doc.text(statusText, 105, y + 9, { align: 'center' });
+            drawFooter(2);
+
+            doc.save(`LashCon_Report_${now.getTime()}.pdf`);
+            uiUpdate();
+        }
+
+
         (function anim() {
             requestAnimationFrame(anim);
 
-            // Visual Effects for Slot Kills
             const time = Date.now() * 0.001;
+
+            // Lashing Warning Pulse (Subtle Color Transition)
+            scene.traverse(node => {
+                if (node.isMesh && node.userData) {
+                    if (node.userData.isLashing) {
+                        const m = node.material;
+                        const mats = Array.isArray(m) ? m : [m];
+
+                        mats.forEach(mat => {
+                            if (!mat || mat.type === 'MeshBasicMaterial') return; // Skip transparent sides
+
+                            if (node.userData.isWarning) {
+                                if (state.showWarningLash) {
+                                    // Mode: ON -> Static Pure Red
+                                    mat.color.setRGB(1.0, 0.0, 0.0);
+                                    mat.emissive.set(0xff0000);
+                                    mat.emissiveIntensity = 4.0;
+                                } else {
+                                    // Mode: OFF -> Smooth Cycle (Orange to Red)
+                                    const cycle = (Math.sin(time * 3.5) + 1) / 2;
+                                    mat.color.setRGB(1.0, 1.0 - cycle, 1.0 - cycle);
+                                    const g = 0.415 * (1 - cycle);
+                                    mat.emissive.setRGB(1.0, g, 0.0);
+                                    mat.emissiveIntensity = 0.3 + cycle * 4.0;
+                                }
+                            } else {
+                                // Reset to professional appearance based on type
+                                const isChain = state.lashType && state.lashType.includes('chain');
+                                mat.color.setRGB(1, 1, 1);
+                                mat.emissive.set(isChain ? 0x333333 : 0xff6a00);
+                                mat.emissiveIntensity = isChain ? 0.05 : 0.2;
+                            }
+                        });
+                    }
+                }
+            });
+
+            // Visual Effects for Slot Kills
             if (state.skEffect === 'neon') {
                 const pulse = (Math.sin(time * 4) + 1) / 2;
                 slotKillEdges.forEach(e => {
