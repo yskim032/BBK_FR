@@ -1166,11 +1166,7 @@
                 </div>
             </div>
 
-            <div class="cam-overlay">
-                <button class="reset-btn" onclick="resetCamera()">⟳ RE-CENTER VIEW</button>
-                <div class="badge"><b>Orbit:</b> Drag &nbsp;|&nbsp; <b>Zoom:</b> Scroll &nbsp;|&nbsp; <b>Pan:</b> Right
-                    Drag</div>
-            </div>
+
             <div id="hint-bubble">Currently showing <b>3D DIGITAL TWIN</b></div>
         </div>
     </div>
@@ -2270,20 +2266,35 @@
             const slotCeiling = BASE_H + tiers3D * FR_SPEC.H;
 
             L.cargos.forEach((c, idx) => {
-                // Overhead clearance per cargo
+                const cL = L.orient === 'along' ? c.L : c.W;
+                const cW = L.orient === 'along' ? c.W : c.L;
+                const topY = BASE_H + timberH + c.H;
+
+                // Overhead clearance gap dimension (Keep only the value, remove the index)
                 const c_cargoTopY = BASE_H + c.H;
                 const c_gapY = slotCeiling - c_cargoTopY;
                 if (c_gapY > 0.05) {
                     addGapLine(new THREE.Vector3(c.x, c_cargoTopY, c.z), new THREE.Vector3(c.x, slotCeiling, c.z));
                     addLabel(`${c_gapY.toFixed(2)}m`, new THREE.Vector3(c.x + 0.15, c_cargoTopY + c_gapY / 2, c.z + 0.15), labelCol, 0.35);
-
-                    // Bulk index ABOVE the gap label
-                    const indexPos = new THREE.Vector3(c.x + 0.15, c_cargoTopY + c_gapY / 2 + 0.25, c.z + 0.15);
-                    addLabel(`[${idx + 1}]`, indexPos, '#ef4444', 0.4);
-                } else {
-                    // Default position if no gap
-                    addLabel(`[${idx + 1}]`, new THREE.Vector3(c.x, c_cargoTopY + 0.3, c.z), '#ef4444', 0.4);
                 }
+
+                // --- Multi-line Surface Labels (Stamping) ---
+                const surfCol = '#000000'; // Black text
+                const surfScale = 0.4;     // Base scale for the 2-line label
+                const specsTxt = `${c.L}x${c.W}x${c.H}m / ${c.wt}t`;
+                const labelFull = `${idx + 1}\n${specsTxt}`;
+
+                // 1. FRONT (FWD) Face (+X)
+                addLabel(labelFull, new THREE.Vector3(c.x + cL / 2 + 0.01, BASE_H + timberH + c.H / 2, c.z), surfCol, surfScale * 0.8, true, new THREE.Euler(0, Math.PI / 2, 0));
+
+                // 3. BACK (AFT) Face (-X)
+                addLabel(labelFull, new THREE.Vector3(c.x - cL / 2 - 0.01, BASE_H + timberH + c.H / 2, c.z), surfCol, surfScale * 0.8, true, new THREE.Euler(0, -Math.PI / 2, 0));
+
+                // 4. STBD (SB) SIDE (+Z)
+                addLabel(labelFull, new THREE.Vector3(c.x, BASE_H + timberH + c.H / 2, c.z + cW / 2 + 0.01), surfCol, surfScale, true, new THREE.Euler(0, 0, 0));
+
+                // 5. PORT (PS) SIDE (-Z)
+                addLabel(labelFull, new THREE.Vector3(c.x, BASE_H + timberH + c.H / 2, c.z - cW / 2 - 0.01), surfCol, surfScale, true, new THREE.Euler(0, Math.PI, 0));
 
                 // Smart Visibility-based distances (Centered on min cargo face)
                 const myB = allBounds[idx];
@@ -2494,22 +2505,49 @@
         }
 
         function addLabel(text, pos, color, scale, isSurface = false, rotation = null) {
+            const isMulti = text.includes('\n');
             const cv = document.createElement('canvas');
-            cv.width = 1024; cv.height = 128;
+            cv.width = 1024;
+            cv.height = isMulti ? 512 : 128;
             const ctx = cv.getContext('2d');
-            ctx.clearRect(0, 0, 1024, 128);
-            ctx.font = 'bold 90px Outfit, sans-serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.clearRect(0, 0, cv.width, cv.height);
 
-            ctx.fillStyle = color;
-            ctx.fillText(text, 512, 64);
+            if (isMulti) {
+                const parts = text.split('\n');
+                const numStr = parts[0];
+                const specStr = parts[1];
+
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillStyle = color;
+
+                // 1. Draw Circled Number (Top Line) - Reduced to 70%
+                const cY = 150;
+                const r = 100; // Smaller circle for smaller number
+                ctx.lineWidth = 18;
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                ctx.arc(512, cY, r, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.font = 'bold 147px Outfit, sans-serif'; // 210 * 0.7
+                ctx.fillText(numStr, 512, cY + 12);
+
+                // 2. Draw Specs (Bottom Line) - Increased by 30%
+                ctx.font = 'bold 91px Outfit, sans-serif'; // 70 * 1.3
+                ctx.fillText(specStr, 512, 380);
+
+            } else {
+                ctx.font = 'bold 90px Outfit, sans-serif';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillStyle = color;
+                ctx.fillText(text, 512, 64);
+            }
 
             const tex = new THREE.CanvasTexture(cv); tex.needsUpdate = true;
             if (isSurface) {
-                const geo = new THREE.PlaneGeometry(8 * scale, 1 * scale);
+                const geo = new THREE.PlaneGeometry(8 * scale, (isMulti ? 4 : 1) * scale);
                 const mat = new THREE.MeshBasicMaterial({
-                    map: tex, transparent: true, side: THREE.DoubleSide,
-                    depthTest: false
+                    map: tex, transparent: true, side: THREE.DoubleSide
                 });
                 const mesh = new THREE.Mesh(geo, mat);
                 mesh.position.copy(pos);
@@ -2520,7 +2558,7 @@
             } else {
                 const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
                 const spr = new THREE.Sprite(mat);
-                spr.scale.set(4 * scale, 1 * scale, 1);
+                spr.scale.set(4 * scale, (isMulti ? 2 : 1) * scale, 1);
                 spr.position.copy(pos);
                 spr.frustumCulled = false;
                 spr.renderOrder = 2000;
