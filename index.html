@@ -1826,6 +1826,29 @@
                 }
             });
 
+            // Unify slot kills to form a perfect rectangular bounding box
+            if (killedSlots.length > 0) {
+                let minX = Infinity, maxX = -Infinity;
+                let minZ = Infinity, maxZ = -Infinity;
+                let maxY = 0;
+                killedSlots.forEach(s => {
+                    if (s.x < minX) minX = s.x;
+                    if (s.x > maxX) maxX = s.x;
+                    if (s.z < minZ) minZ = s.z;
+                    if (s.z > maxZ) maxZ = s.z;
+                    if (s.y > maxY) maxY = s.y;
+                });
+
+                killedSlots = [];
+                for (let x = minX; x <= maxX; x++) {
+                    for (let z = minZ; z <= maxZ; z++) {
+                        for (let y = 0; y <= Math.max(0, maxY); y++) {
+                            killedSlots.push({ x, y, z });
+                        }
+                    }
+                }
+            }
+
             const totalTEU = (killedSlots.length * 2);
 
             // Weight Distribution per Unit
@@ -1926,13 +1949,20 @@
             const leverPS = L.maxZ + (L.totalWid / 2), leverSB = (L.totalWid / 2) - L.minZ;
             const CapTp = nT * CS * Math.min(leverPS, leverSB) * Math.sin(aTPS);
 
-            const isTBad = (CapT < Ft_req || CapTp < Mt_req || (aTPS * 180 / Math.PI) < 30 || (aTPS * 180 / Math.PI) > 60);
-            const isLBad = (CapL < Fl_req || (aLFwd * 180 / Math.PI) < 30 || (aLFwd * 180 / Math.PI) > 60);
+            const capTBad = (CapT < Ft_req || CapTp < Mt_req);
+            const angTBad = ((aTPS * 180 / Math.PI) < 30 || (aTPS * 180 / Math.PI) > 60);
+            const isTBad = capTBad || angTBad;
+            const lvlT = capTBad ? 2 : (angTBad ? 1 : 0);
+
+            const capLBad = (CapL < Fl_req);
+            const angLBad = ((aLFwd * 180 / Math.PI) < 30 || (aLFwd * 180 / Math.PI) > 60);
+            const isLBad = capLBad || angLBad;
+            const lvlL = capLBad ? 2 : (angLBad ? 1 : 0);
 
             return {
                 isTBad, isLBad,
-                tPSWarn: isTBad, tSBWarn: isTBad, tMidWarn: CapT < Ft_req,
-                lFwdWarn: isLBad, lAftWarn: isLBad, lMidWarn: CapL < Fl_req,
+                tPSWarn: lvlT, tSBWarn: lvlT, tMidWarn: capTBad ? 2 : 0,
+                lFwdWarn: lvlL, lAftWarn: lvlL, lMidWarn: capLBad ? 2 : 0,
                 Ft_req, Fl_req, Mt_req, CapT, CapL, CapTp,
                 degTPS: aTPS * 180 / Math.PI, degTSB: aTSB * 180 / Math.PI,
                 degLFwd: aLFwd * 180 / Math.PI, degLAft: aLAft * 180 / Math.PI,
@@ -2093,42 +2123,74 @@
                 const dist = p1.distanceTo(p2);
                 if (dist < 0.01) continue;
 
-                const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+                const warnLvl = segmentWarnings[i] || 0;
+                const isWarn = !!warnLvl;
                 const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
-                let upVec = new THREE.Vector3(0, 1, 0);
-                if (Math.abs(dir.y) > 0.8) {
-                    upVec = isTransverse ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
+
+                const buildSubSeg = (sp1, sp2, warnFlag, vStart) => {
+                    const sDist = sp1.distanceTo(sp2);
+                    if (sDist < 0.001) return;
+                    const mid = new THREE.Vector3().addVectors(sp1, sp2).multiplyScalar(0.5);
+                    const sDir = new THREE.Vector3().subVectors(sp2, sp1).normalize();
+                    let upVec = new THREE.Vector3(0, 1, 0);
+                    if (Math.abs(sDir.y) > 0.8) {
+                        upVec = isTransverse ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(1, 0, 0);
+                    }
+
+                    const geo = new THREE.PlaneGeometry(width, sDist);
+                    geo.rotateX(-Math.PI / 2); // Make it flat for path alignment
+
+                    const uvs = geo.attributes.uv.array;
+                    const linkDens = isChain ? 5 : 2;
+                    for (let j = 0; j < uvs.length; j += 2) {
+                        if (uvs[j + 1] > 0.5) uvs[j + 1] = vStart + sDist * linkDens;
+                        else uvs[j + 1] = vStart;
+                    }
+
+                    const mat = new THREE.MeshStandardMaterial({
+                        map: tex,
+                        emissive: isChain ? 0x222222 : 0xff6a00,
+                        emissiveIntensity: 0.1,
+                        roughness: isChain ? 0.3 : 0.8,
+                        metalness: isChain ? 0.8 : 0.1,
+                        transparent: true,
+                        alphaTest: 0.1,
+                        side: THREE.DoubleSide
+                    });
+
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.userData = { isLashing: true, isWarning: warnFlag };
+                    mesh.frustumCulled = false;
+                    mesh.renderOrder = 999;
+                    mesh.position.copy(mid);
+                    mesh.up.copy(upVec);
+                    mesh.lookAt(sp2);
+                    grp.add(mesh);
+                };
+
+                if (warnLvl === 1 || warnLvl === true) {
+                    const DECK_H = 0.25;
+                    const warnLen = Math.min(0.8, dist * 0.4); // length for the warn part near FR
+                    const p1Touches = Math.abs(p1.y - DECK_H) < 0.1;
+                    const p2Touches = Math.abs(p2.y - DECK_H) < 0.1;
+                    const linkDens = isChain ? 5 : 2;
+
+                    if (p1Touches && !p2Touches) {
+                        const midP = p1.clone().add(dir.clone().multiplyScalar(warnLen));
+                        buildSubSeg(p1, midP, true, 0);
+                        buildSubSeg(midP, p2, false, warnLen * linkDens);
+                    } else if (p2Touches && !p1Touches) {
+                        const midP = p2.clone().sub(dir.clone().multiplyScalar(warnLen));
+                        buildSubSeg(p1, midP, false, 0);
+                        buildSubSeg(midP, p2, true, (dist - warnLen) * linkDens);
+                    } else {
+                        buildSubSeg(p1, p2, true, 0);
+                    }
+                } else if (warnLvl === 2) {
+                    buildSubSeg(p1, p2, true, 0);
+                } else {
+                    buildSubSeg(p1, p2, false, 0);
                 }
-
-                const geo = new THREE.PlaneGeometry(width, dist);
-                geo.rotateX(-Math.PI / 2); // Make it flat for path alignment
-
-                const uvs = geo.attributes.uv.array;
-                const linkDens = isChain ? 5 : 2;
-                for (let j = 0; j < uvs.length; j += 2) {
-                    if (uvs[j + 1] > 0.5) uvs[j + 1] = dist * linkDens;
-                    else uvs[j + 1] = 0;
-                }
-
-                const mat = new THREE.MeshStandardMaterial({
-                    map: tex,
-                    emissive: isChain ? 0x222222 : 0xff6a00,
-                    emissiveIntensity: 0.1,
-                    roughness: isChain ? 0.3 : 0.8,
-                    metalness: isChain ? 0.8 : 0.1,
-                    transparent: true,
-                    alphaTest: 0.1,
-                    side: THREE.DoubleSide
-                });
-
-                const mesh = new THREE.Mesh(geo, mat);
-                mesh.userData = { isLashing: true, isWarning: !!segmentWarnings[i] };
-                mesh.frustumCulled = false;
-                mesh.renderOrder = 999;
-                mesh.position.copy(mid);
-                mesh.up.copy(upVec);
-                mesh.lookAt(p2);
-                grp.add(mesh);
             }
         }
 
@@ -2409,11 +2471,12 @@
             const edgeX = L.totalLen / 2 + 4.0;
             const edgeZ = L.totalWid / 2 + 3.0;
             const rotH = new THREE.Euler(-Math.PI / 2, 0, 0);
+            const rotPS = new THREE.Euler(-Math.PI / 2, 0, Math.PI);
             const dScale = 0.8; // Match 40FR label size
 
             addLabel("◀ AFT", new THREE.Vector3(-edgeX, dirH, 0), dirCol, dScale, true, rotH);
             addLabel("FWD ▶", new THREE.Vector3(edgeX, dirH, 0), dirCol, dScale, true, rotH);
-            addLabel("PORT SIDE (PS)", new THREE.Vector3(0, dirH, -edgeZ), dirCol, dScale, true, rotH);
+            addLabel("PORT SIDE (PS)", new THREE.Vector3(0, dirH, -edgeZ), dirCol, dScale, true, rotPS);
             addLabel("STBD SIDE (SB)", new THREE.Vector3(0, dirH, edgeZ), dirCol, dScale, true, rotH);
         }
 
