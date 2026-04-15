@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BBK Stowage Planner Pro</title>
+    <title>G.GAIN SOLUTION | BBK Stowage Planner</title>
     <meta name="description"
         content="Professional 3D/2D visualization for Break Bulk cargo on 40-foot flat rack containers" />
     <link
@@ -71,29 +71,55 @@
         .logo-box {
             display: flex;
             align-items: center;
-            gap: 12px;
+            height: 100%;
+            gap: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .logo-icon {
-            width: 38px;
-            height: 38px;
-            background: linear-gradient(135deg, var(--accent), var(--accent2));
-            border-radius: 10px;
+        .logo-box:hover {
+            transform: translateY(-1px);
+        }
+
+        .logo-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+        }
+
+        .logo-img {
+            height: 32px;
+            width: auto;
+            display: block;
+        }
+
+        .program-title-box {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            box-shadow: 0 0 15px var(--accent-glow);
+            flex-direction: column;
+            line-height: 1.1;
         }
 
-        header h1 {
-            font-size: 18px;
+        .program-main-text {
+            font-size: 17px;
             font-weight: 800;
-            letter-spacing: -0.5px;
-            background: linear-gradient(to right, #60a5fa, #22d3ee);
+            letter-spacing: -0.2px;
+            background: linear-gradient(to right, #ffffff, var(--accent2));
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+        }
+
+        .program-sub-text {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--muted);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
+        .spacer {
+            flex: 1;
         }
 
         .v-tag {
@@ -152,7 +178,7 @@
 
 
         .signature-final {
-            font-size: 28px;
+            font-size: 19px;
             font-weight: 950;
             background: linear-gradient(to right, #fffbeb, #fbbf24, #f59e0b);
             -webkit-background-clip: text;
@@ -794,9 +820,11 @@
 
     <header>
         <div class="logo-box">
-            <div class="logo-icon">⚓</div>
-            <div>
-                <h1>BBK Stowage Planner Pro</h1>
+            <img src="logo.png" alt="G.GAIN SOLUTION" class="logo-img">
+            <div class="logo-divider"></div>
+            <div class="program-title-box">
+                <span class="program-main-text">Break Bulk Planner</span>
+                <span class="program-sub-text">Digital Twin System</span>
             </div>
         </div>
         <div class="spacer"></div>
@@ -819,7 +847,7 @@
         </div>
         <div class="spacer" style="flex: 2;"></div>
         <div class="signature-final">
-            created by THE END - YS KIM
+            Copyright © 2026 THE END - YS KIM. All Rights Reserved.
         </div>
     </header>
 
@@ -3312,19 +3340,19 @@
 
             const drawFooter = (page) => {
                 doc.setPage(page);
-                doc.setTextColor(150); doc.setFontSize(8);
-                doc.text(`Page ${page} of 2 | Ref: BBK-PLN-PR-9.1 | Generated: ${dateStr} ${timeStr}`, 105, 285, { align: 'center' });
-                doc.text("Digital Twin Stowage Planner Pro V9.1 - YS KIM Signature Edition", 105, 290, { align: 'center' });
+                doc.setTextColor(150); doc.setFontSize(6);
+                doc.text(`Page ${page} of 2 | Ref: GS-STW-PNR-1.0 | Generated: ${dateStr} ${timeStr}`, 105, 285, { align: 'center' });
+                doc.text("Copyright © 2026 THE END - YS KIM. All Rights Reserved.", 105, 290, { align: 'center' });
             };
 
             const drawHeader = () => {
                 doc.setFillColor(...secondary); doc.rect(0, 0, 210, 30, 'F');
                 doc.setTextColor(255); doc.setFontSize(22); doc.setFont("helvetica", "bold");
-                doc.text("Lashcon IMO: BBK Stowage Report", 12, 18);
+                doc.text("Lashcon IMO: G.GAIN SOLUTION Stowage Report", 12, 18);
                 doc.setFontSize(9); doc.setFont("helvetica", "normal");
                 doc.text(`DATE: ${dateStr}`, 160, 10);
                 doc.text(`TIME: ${timeStr}`, 160, 15);
-                doc.text(`REF: BBK-PLN-PR-9.1`, 160, 20);
+                doc.text(`REF: GS-STW-PNR-1.0`, 160, 20);
                 doc.line(10, 22, 120, 22);
                 doc.setFontSize(7); doc.text("Code of Safe Practice for Cargo Stowage and Securing 2003, Annex 13", 12, 26);
             };
@@ -3510,3 +3538,5 @@
         })();
     </script>
 </body>
+
+</html>
