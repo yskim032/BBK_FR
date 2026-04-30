@@ -841,6 +841,9 @@
             <button class="view-btn" id="btnVLashing" onclick="toggleVLashing()"
                 style="border-left: 1px solid var(--border); margin-left: 8px; color: var(--accent2);">V-LASHING:
                 ON</button>
+            <button class="view-btn" id="btnLifting" onclick="toggleLifting()"
+                style="border-left: 1px solid var(--border); margin-left: 8px; color: #10b981;">LIFTING SIM:
+                OFF</button>
             <button class="view-btn" id="btnPDF" onclick="downloadPDF()"
                 style="border-left: 1px solid var(--border); margin-left: 8px; color: #fbbf24; font-weight:800;">REPORT
                 PDF</button>
@@ -1185,8 +1188,15 @@
                                     onclick="adjustCameraDistance(1)">-</button>
                             </div>
                         </div>
+
                         <button class="btn-choice"
-                            style="grid-column: span 2; padding: 10px; font-weight: 800; border-color: var(--green); color: var(--green); margin-top: 8px;"
+                            style="grid-column: span 2; padding: 10px; font-weight: 800; border-color: var(--accent2); color: var(--accent2); margin-top: 8px;"
+                            onclick="setCameraView('side')">
+                            📐 LIFTING SIDE VIEW
+                        </button>
+
+                        <button class="btn-choice"
+                            style="grid-column: span 2; padding: 10px; font-weight: 800; border-color: var(--green); color: var(--green); margin-top: 4px;"
                             onclick="record360GIF()">
                             🎬 EXPORT 360° GIF
                         </button>
@@ -1194,6 +1204,58 @@
                 </div>
             </div>
 
+
+            <div id="lifting-overlay" class="overlay-card"
+                style="position: absolute; bottom: 24px; left: 24px; width: 340px; padding: 20px; display: none; z-index: 10;">
+                <div class="card-h">
+                    <span>Lifting Simulation (4 Corners)</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-lbl" style="color:var(--accent2)">Cargo Total Load</span>
+                    <span class="data-val" id="lift-total-wt">?</span>
+                </div>
+                <div class="data-row">
+                    <span class="data-lbl" style="color:var(--gold)">Gross Load (incl. Tares)</span>
+                    <span class="data-val" id="lift-gross-wt">?</span>
+                </div>
+
+                <div
+                    style="margin-top: 18px; margin-bottom: 8px; font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 0.5px;">
+                    LONGITUDINAL WEIGHT DISTRIBUTION</div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700;">
+                    <span style="color: var(--red)">AFT (Left Side)</span>
+                    <span style="color: var(--accent)">FWD (Right Side)</span>
+                </div>
+
+                <!-- Graph bar -->
+                <div id="lift-bar-container"
+                    style="width: 100%; height: 12px; background: linear-gradient(to right, var(--red), var(--accent)); border-radius: 6px; border: 1px solid var(--border); overflow: hidden; display: flex; margin-top: 8px; margin-bottom: 8px; position: relative;">
+                    <!-- We will use a mask or just a single container with background updated in JS -->
+                    <div id="lift-bar-split"
+                        style="position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: white; box-shadow: 0 0 10px white; z-index: 2; display: none;">
+                    </div>
+                </div>
+                <!-- Hidden old bars to avoid JS errors if they are referenced -->
+                <div id="lift-bar-aft" style="display:none"></div>
+                <div id="lift-bar-fwd" style="display:none"></div>
+
+                <div
+                    style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 800; font-family: 'JetBrains Mono';">
+                    <span id="lift-val-aft" style="color: var(--red)">?</span>
+                    <span id="lift-val-fwd" style="color: var(--accent)">?</span>
+                </div>
+
+                <div id="lift-warn"
+                    style="margin-top: 14px; padding: 10px; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--red); color: var(--red); font-size: 12px; font-weight: 700; border-radius: 6px; text-align: center; display: none;">
+                    ⚠ DANGEROUS ECCENTRIC LOAD SHIFT
+                </div>
+
+                <div id="lift-suggest"
+                    style="margin-top: 8px; padding: 12px; background: rgba(16, 185, 129, 0.1); border: 1px dashed var(--green); color: var(--green); font-size: 12px; line-height: 1.4; border-radius: 8px; display: none;">
+                    <span style="font-weight: 800; display: block; margin-bottom: 4px;">💡 ADJUSTMENT GUIDE</span>
+                    <span id="lift-suggest-text">Move cargo 0.5m forward to balance.</span>
+                </div>
+            </div>
 
             <div id="hint-bubble">Currently showing <b>3D DIGITAL TWIN</b></div>
         </div>
@@ -1205,7 +1267,7 @@
         let state = {
             view: '3d', orient: 'along', frManualCount: null, shape: 'box',
             isSandwich: false, isTimber: false, showLashing: false, tLashCount: 4, lLashCount: 2,
-            tVLashCount: 2, lVLashCount: 2,
+            tVLashCount: 2, lVLashCount: 2, showLifting: false,
             skColor: '#ef4444', skOpacity: 0.12, skEffect: 'none',
             lashType: 'strap', lashMSL: 100, zoom2D: 1.0, showWarningLash: true, showVLashing: true
         };
@@ -1330,6 +1392,22 @@
         function toggleLashing() {
             state.showLashing = !state.showLashing;
             syncLashingBtn();
+            saveSystem();
+            uiUpdate();
+        }
+
+        function syncLiftingBtn() {
+            const btn = document.getElementById('btnLifting');
+            if (btn) {
+                btn.textContent = `LIFTING SIM: ${state.showLifting ? 'ON' : 'OFF'}`;
+                btn.style.color = state.showLifting ? '#eab308' : '#10b981';
+                btn.style.fontWeight = '800';
+            }
+        }
+
+        function toggleLifting() {
+            state.showLifting = !state.showLifting;
+            syncLiftingBtn();
             saveSystem();
             uiUpdate();
         }
@@ -1757,6 +1835,11 @@
                     updateLashingTable(LInfo);
                     updateLashingResults(LInfo);
                 }
+            }
+
+            const liftOverlay = document.getElementById('lifting-overlay');
+            if (liftOverlay) {
+                liftOverlay.style.display = state.showLifting ? 'block' : 'none';
             }
 
             if (state.view === '3d') {
@@ -2346,6 +2429,10 @@
                 drawLashings(L);
             }
 
+            if (state.showLifting) {
+                drawLiftingSimulation(L);
+            }
+
 
 
             const labelCol = '#10b981';
@@ -2506,6 +2593,162 @@
             addLabel("FWD ▶", new THREE.Vector3(edgeX, dirH, 0), dirCol, dScale, true, rotH);
             addLabel("PORT SIDE (PS)", new THREE.Vector3(0, dirH, -edgeZ), dirCol, dScale, true, rotPS);
             addLabel("STBD SIDE (SB)", new THREE.Vector3(0, dirH, edgeZ), dirCol, dScale, true, rotH);
+        }
+
+        function drawLiftingSimulation(L) {
+            const spreaderY = L.bbkArrH + 4.0;
+            const BASE_H = 0.25;
+
+            const tareWt = L.frCount * 5.0; // Standard 40FR tare approx 5t
+            const grossWt = L.totalWt + tareWt;
+
+            let cgX_cargo = 0, cgZ_cargo = 0;
+            if (L.totalWt > 0.001) {
+                L.cargos.forEach(c => {
+                    cgX_cargo += c.x * c.wt;
+                    cgZ_cargo += c.z * c.wt;
+                });
+                cgX_cargo /= L.totalWt;
+                cgZ_cargo /= L.totalWt;
+            }
+
+            // Assuming FR center is at 0,0, FR tare CG is 0,0
+            const cgX = (cgX_cargo * L.totalWt) / grossWt;
+            const cgZ = (cgZ_cargo * L.totalWt) / grossWt;
+
+            const length = L.totalLen;
+            const width = L.totalWid;
+
+            // Load distro based on rigid plate approximation
+            const percAFT = Math.max(0, Math.min(1, 0.5 - cgX / length));
+            const percFWD = 1.0 - percAFT;
+            const percPS = Math.max(0, Math.min(1, 0.5 - cgZ / width));
+            const percSB = 1.0 - percPS;
+
+            const wAFT = grossWt * percAFT;
+            const wFWD = grossWt * percFWD;
+
+            // Update UI
+            document.getElementById('lift-total-wt').textContent = L.totalWt.toFixed(1) + ' t';
+            document.getElementById('lift-gross-wt').textContent = grossWt.toFixed(1) + ' t';
+
+            // Dynamic gradient with fade at the boundary
+            const pA = percAFT * 100;
+            const fadeWidth = 10; // percent
+            const barCont = document.getElementById('lift-bar-container');
+            if (barCont) {
+                barCont.style.background = `linear-gradient(to right, var(--red) ${pA - fadeWidth / 2}%, var(--accent) ${pA + fadeWidth / 2}%)`;
+            }
+
+            document.getElementById('lift-val-aft').innerHTML = `${wAFT.toFixed(1)}t <span style="font-size:12px; opacity:0.8; font-weight:400;">(${(percAFT * 100).toFixed(1)}%)</span>`;
+            document.getElementById('lift-val-fwd').innerHTML = `<span style="font-size:12px; opacity:0.8; font-weight:400;">(${(percFWD * 100).toFixed(1)}%)</span> ${wFWD.toFixed(1)}t`;
+
+            const warnBox = document.getElementById('lift-warn');
+            const suggestBox = document.getElementById('lift-suggest');
+            const suggestText = document.getElementById('lift-suggest-text');
+
+            const tol = 0.08; // 8% tolerance
+            let needMove = false;
+            let msg = "";
+
+            if (percAFT > 0.5 + tol) {
+                const dist = (percAFT - (0.5 + tol)) * length;
+                msg += `▶ Move cargo <b>${dist.toFixed(2)}m FWD</b> (Right)<br>`;
+                needMove = true;
+            } else if (percAFT < 0.5 - tol) {
+                const dist = ((0.5 - tol) - percAFT) * length;
+                msg += `◀ Move cargo <b>${dist.toFixed(2)}m AFT</b> (Left)<br>`;
+                needMove = true;
+            }
+
+            if (percPS > 0.5 + tol) {
+                const dist = (percPS - (0.5 + tol)) * width;
+                msg += `▼ Move cargo <b>${dist.toFixed(2)}m SB</b> (Stbd)<br>`;
+                needMove = true;
+            } else if (percPS < 0.5 - tol) {
+                const dist = ((0.5 - tol) - percPS) * width;
+                msg += `▲ Move cargo <b>${dist.toFixed(2)}m PS</b> (Port)<br>`;
+                needMove = true;
+            }
+
+            if (needMove) {
+                warnBox.style.display = 'block';
+                suggestBox.style.display = 'block';
+                suggestText.innerHTML = msg;
+            } else {
+                warnBox.style.display = 'none';
+                suggestBox.style.display = 'none';
+            }
+
+            // Draw spreader frame
+            const spGeo = new THREE.BoxGeometry(length, 0.2, width);
+            const spMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.5, metalness: 0.5 });
+            const spMesh = new THREE.Mesh(spGeo, spMat);
+            spMesh.position.set(0, spreaderY, 0);
+            grp.add(spMesh);
+
+            const spEdges = new THREE.LineSegments(new THREE.EdgesGeometry(spGeo), new THREE.LineBasicMaterial({ color: 0xca8a04 }));
+            spEdges.position.copy(spMesh.position);
+            grp.add(spEdges);
+
+            // Crane hook and top wires
+            const hookY = spreaderY + 4.0;
+            const hookPos = new THREE.Vector3(0, hookY, 0);
+            const hookGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.5);
+            const hookMesh = new THREE.Mesh(hookGeo, new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+            hookMesh.position.copy(hookPos);
+            grp.add(hookMesh);
+
+            // Draw ropes
+            const pts = [
+                { id: 'AFT-PS', x: -length / 2 + 0.1, z: -width / 2 + 0.1, w: grossWt * percAFT * percPS },
+                { id: 'FWD-PS', x: length / 2 - 0.1, z: -width / 2 + 0.1, w: grossWt * percFWD * percPS },
+                { id: 'AFT-SB', x: -length / 2 + 0.1, z: width / 2 - 0.1, w: grossWt * percAFT * percSB },
+                { id: 'FWD-SB', x: length / 2 - 0.1, z: width / 2 - 0.1, w: grossWt * percFWD * percSB }
+            ];
+
+            pts.forEach(p => {
+                // Top wire to hook
+                const spCornerTop = new THREE.Vector3(p.x, spreaderY + 0.1, p.z);
+                const topDist = spCornerTop.distanceTo(hookPos);
+                const topGeo = new THREE.CylinderGeometry(0.04, 0.04, topDist, 8);
+                const topMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.3, metalness: 0.8 });
+                const topWire = new THREE.Mesh(topGeo, topMat);
+                topWire.position.copy(new THREE.Vector3().addVectors(spCornerTop, hookPos).multiplyScalar(0.5));
+                topWire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), hookPos.clone().sub(spCornerTop).normalize());
+                grp.add(topWire);
+
+                // Bottom straight wire to 40FR
+                const isAft = p.x < 0;
+                const rColor = isAft ? 0xef4444 : 0x3b82f6; // AFT: Red, FWD: Blue
+                const hexColor = isAft ? '#ef4444' : '#3b82f6';
+
+                const corner = new THREE.Vector3(p.x, BASE_H, p.z);
+                const spCornerBtm = new THREE.Vector3(p.x, spreaderY - 0.1, p.z);
+                const btmDist = corner.distanceTo(spCornerBtm);
+
+                const isHeavy = (p.w / grossWt) > 0.35;
+                const btmGeo = new THREE.CylinderGeometry(isHeavy ? 0.1 : 0.07, isHeavy ? 0.1 : 0.07, btmDist, 8);
+                const btmMat = new THREE.MeshStandardMaterial({ color: rColor, roughness: 0.3, metalness: 0.8 });
+                const btmWire = new THREE.Mesh(btmGeo, btmMat);
+                btmWire.position.copy(new THREE.Vector3().addVectors(corner, spCornerBtm).multiplyScalar(0.5));
+                btmWire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), spCornerBtm.clone().sub(corner).normalize());
+                grp.add(btmWire);
+
+                const lblPos = new THREE.Vector3().lerpVectors(corner, spCornerBtm, 0.45);
+                addLabel(isHeavy ? `⚠ ${p.w.toFixed(1)}t` : `${p.w.toFixed(1)}t`, lblPos, hexColor, isHeavy ? 1.0 : 0.8);
+            });
+
+            // COG Marker
+            const cogGeo = new THREE.SphereGeometry(0.3, 16, 16);
+            const cogMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+            const cogMesh = new THREE.Mesh(cogGeo, cogMat);
+            cogMesh.position.set(cgX, BASE_H + 0.1, cgZ);
+            grp.add(cogMesh);
+
+            // Downward arrow from COG
+            addGapLine(new THREE.Vector3(cgX, BASE_H, cgZ), new THREE.Vector3(cgX, -1.0, cgZ), 0xef4444);
+            addLabel('C.G.', new THREE.Vector3(cgX, -1.5, cgZ), '#ef4444', 0.5);
         }
 
         function addGapLine(p1, p2, col = 0x10b981) {
@@ -3223,6 +3466,16 @@
         renderCargoRows();
         uiUpdate();
         syncLashingBtn();
+
+        function setCameraView(v) {
+            if (v === 'side') {
+                const L = getLayout();
+                const centerY = (L.bbkArrH + 4.0) / 2; // Midpoint between deck and spreader
+                camera.position.set(0, centerY, 35);
+                controls.target.set(0, centerY, 0);
+            }
+            controls.update();
+        }
 
         async function record360GIF() {
             if (state.view !== '3d' && state.view !== 'split') {
