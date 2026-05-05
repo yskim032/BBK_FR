@@ -10,11 +10,11 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono&display=swap"
         rel="stylesheet" />
-    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.4.5/gifshot.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="three.min.js"></script>
+    <script src="OrbitControls.js"></script>
+    <script>window.gifshot = { createGIF: function (o, cb) { alert("GIF 기능은 별도 파일이 필요합니다."); cb({ error: true }); } }</script>
+    <script src="jspdf.umd.min.js"></script>
+    <script src="html2canvas.min.js"></script>
     <style>
         :root {
             --bg: #030712;
@@ -844,6 +844,19 @@
             <button class="view-btn" id="btnLifting" onclick="toggleLifting()"
                 style="border-left: 1px solid var(--border); margin-left: 8px; color: #10b981;">LIFTING SIM:
                 OFF</button>
+            <button class="view-btn" id="btnManual" onclick="toggleManualMenu()"
+                style="border-left: 1px solid var(--border); margin-left: 8px; color: #a78bfa; font-weight:700;">USER
+                MANUAL</button>
+
+            <div id="manual-menu"
+                style="display:none; position:absolute; top:65px; right:24px; background:var(--panel-solid); border:1px solid var(--border); border-radius:12px; padding:12px; z-index:1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width:200px;">
+                <button class="btn-choice" onclick="downloadManual('en')"
+                    style="margin-bottom:8px; width:100%; border-color:#a78bfa; color:#a78bfa;">Download EN
+                    (PDF)</button>
+                <button class="btn-choice" onclick="downloadManual('kr')"
+                    style="width:100%; border-color:#a78bfa; color:#a78bfa;">Download KR (PDF)</button>
+            </div>
+
             <button class="view-btn" id="btnPDF" onclick="downloadPDF()"
                 style="border-left: 1px solid var(--border); margin-left: 8px; color: #fbbf24; font-weight:800;">REPORT
                 PDF</button>
@@ -1256,8 +1269,7 @@
                     <span id="lift-suggest-text">Move cargo 0.5m forward to balance.</span>
                 </div>
             </div>
-
-            <div id="hint-bubble">Currently showing <b>3D DIGITAL TWIN</b></div>
+            <!-- Hint bubble removed -->
         </div>
     </div>
 
@@ -1452,7 +1464,7 @@
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 1000);
-        camera.position.set(20, 15, 25);
+        camera.position.set(35, 20, 0);
 
         const controls = new THREE.OrbitControls(camera, cv3);
         controls.enableDamping = true;
@@ -2334,11 +2346,12 @@
                     sMesh.position.set(0, -BASE_H / 2, z);
                     grp.add(sMesh);
                 }
-
-                const labelPosLeft = new THREE.Vector3(-(FR_SPEC.L / 2 + 1.6), BASE_H + 0.02, z);
-                addLabel(`40FR #${i + 1}`, labelPosLeft, '#ffffff', 0.8, true, new THREE.Euler(-Math.PI / 2, 0, 0));
-                const labelPosRight = new THREE.Vector3(FR_SPEC.L / 2 + 1.6, BASE_H + 0.02, z);
-                addLabel(`40FR #${i + 1}`, labelPosRight, '#ffffff', 0.8, true, new THREE.Euler(-Math.PI / 2, 0, 0));
+                // Properly rotated to view horizontally from +X
+                const rotH = new THREE.Euler(-Math.PI / 2, 0, Math.PI / 2);
+                const labelPosLeft = new THREE.Vector3(-(FR_SPEC.L / 2 + 0.8), BASE_H + 0.02 + i * 0.001, z);
+                addLabel(`40FR #${L.frCount - i}`, labelPosLeft, '#ffffff', 0.8, true, rotH);
+                const labelPosRight = new THREE.Vector3(FR_SPEC.L / 2 + 0.8, BASE_H + 0.02 + i * 0.001, z);
+                addLabel(`40FR #${L.frCount - i}`, labelPosRight, '#ffffff', 0.8, true, rotH);
             }
 
             // Slot Kills
@@ -2385,15 +2398,31 @@
                 // Render Timbers
                 if (state.isTimber) {
                     const tSpacing = 1.0;
-                    const tCount = Math.max(2, Math.ceil(cL / tSpacing) + 1);
-                    const tLen = cW * 1.1; // 10% longer than cargo width
+                    const cargoLen = c.L;
+                    const cargoWid = c.W;
+
+                    // Space them out along the LONG side (cargoLen)
+                    const tCount = Math.max(2, Math.ceil(cargoLen / tSpacing) + 1);
+
+                    // Stretch them across the SHORT side (cargoWid)
+                    const tLen = cargoWid * 1.1;
                     const tSize = 0.2;
+
                     for (let i = 0; i < tCount; i++) {
-                        const tX = c.x - cL / 2 + (i / (tCount - 1)) * cL;
-                        const tGeo = new THREE.BoxGeometry(tSize, tSize, tLen);
-                        const tMesh = new THREE.Mesh(tGeo, timberMat);
-                        tMesh.position.set(tX, BASE_H + tSize / 2, c.z);
-                        grp.add(tMesh);
+                        const offset = -cargoLen / 2 + (i / (tCount - 1)) * cargoLen;
+                        if (L.orient === 'along') {
+                            // ALONG SIDE: Cargo length along X. Space along X. Stretch along Z.
+                            const tGeo = new THREE.BoxGeometry(tSize, tSize, tLen);
+                            const tMesh = new THREE.Mesh(tGeo, timberMat);
+                            tMesh.position.set(c.x + offset, BASE_H + tSize / 2, c.z);
+                            grp.add(tMesh);
+                        } else {
+                            // ATHWART SHIP: Cargo length along Z. Space along Z. Stretch along X.
+                            const tGeo = new THREE.BoxGeometry(tLen, tSize, tSize);
+                            const tMesh = new THREE.Mesh(tGeo, timberMat);
+                            tMesh.position.set(c.x, BASE_H + tSize / 2, c.z + offset);
+                            grp.add(tMesh);
+                        }
                     }
                 }
 
@@ -2583,16 +2612,17 @@
             // Direction Labels (FWD, AFT, PS, SB)
             const dirCol = '#fbbf24';
             const dirH = BASE_H + 0.05;
-            const edgeX = L.totalLen / 2 + 4.0;
-            const edgeZ = L.totalWid / 2 + 3.0;
-            const rotH = new THREE.Euler(-Math.PI / 2, 0, 0);
-            const rotPS = new THREE.Euler(-Math.PI / 2, 0, Math.PI);
+            const edgeX = L.totalLen / 2 + 2.5; // push outside 40FR label
+            const edgeZ = L.totalWid / 2 + 4.5; // increased gap for PS/SB
+            const rotH = new THREE.Euler(-Math.PI / 2, 0, Math.PI / 2);
+            const rotPS = new THREE.Euler(-Math.PI / 2, 0, -Math.PI / 2);
             const dScale = 0.8; // Match 40FR label size
 
-            addLabel("◀ AFT", new THREE.Vector3(-edgeX, dirH, 0), dirCol, dScale, true, rotH);
-            addLabel("FWD ▶", new THREE.Vector3(edgeX, dirH, 0), dirCol, dScale, true, rotH);
-            addLabel("PORT SIDE (PS)", new THREE.Vector3(0, dirH, -edgeZ), dirCol, dScale, true, rotPS);
-            addLabel("STBD SIDE (SB)", new THREE.Vector3(0, dirH, edgeZ), dirCol, dScale, true, rotH);
+            // Facing FWD (-X), STAR BOARD is -Z (Right), PORT is +Z (Left)
+            addLabel("▲ FWD", new THREE.Vector3(-edgeX, dirH, 0), dirCol, dScale, true, rotH);
+            addLabel("▼ AFT", new THREE.Vector3(edgeX, dirH, 0), dirCol, dScale, true, rotH);
+            addLabel("STAR BOARD (SB) ▶", new THREE.Vector3(0, dirH, -edgeZ), dirCol, dScale, true, rotH);
+            addLabel("◀ PORT SIDE (PS)", new THREE.Vector3(0, dirH, edgeZ), dirCol, dScale, true, rotH);
         }
 
         function drawLiftingSimulation(L) {
@@ -2881,7 +2911,7 @@
             if (isSurface) {
                 const geo = new THREE.PlaneGeometry(8 * scale, (isMulti ? 4 : 1) * scale);
                 const mat = new THREE.MeshBasicMaterial({
-                    map: tex, transparent: true, side: THREE.DoubleSide
+                    map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false
                 });
                 const mesh = new THREE.Mesh(geo, mat);
                 mesh.position.copy(pos);
@@ -2908,7 +2938,7 @@
             const PAD = (forcePad !== null) ? forcePad : 100;
             const targetVisualLen = Math.max(LInfo.totalLen, LInfo.bbkArrL + 2);
             const targetVisualWid = Math.max(LInfo.totalWid, LInfo.bbkArrW + 2);
-            const baseScale = Math.min((W - PAD * 2) / targetVisualLen, (H - PAD * 2) / targetVisualWid, 400);
+            const baseScale = Math.min((H - PAD * 2) / targetVisualLen, (W - PAD * 2) / targetVisualWid, 400);
             const scale = (forcePad !== null) ? baseScale : baseScale * (state.zoom2D || 1.0);
             return { scale, ox: W / 2, oy: H / 2 };
         }
@@ -2961,8 +2991,9 @@
                     cv2.style.cursor = 'grabbing';
                     dragObj2DIdx = i;
                     isDragging2D = true;
-                    const clickWorldX = (mx - ox) / scale;
-                    const clickWorldZ = (my - oy) / scale;
+                    // Inverse of +90deg rotation around (ox, oy):
+                    const clickWorldX = (my - oy) / scale;
+                    const clickWorldZ = -(mx - ox) / scale;
                     dragOffset2D.x = clickWorldX - c.x;
                     dragOffset2D.z = clickWorldZ - c.z;
                     break;
@@ -2979,8 +3010,8 @@
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
 
-            const clickWorldX = (mx - ox) / scale;
-            const clickWorldZ = (my - oy) / scale;
+            const clickWorldX = (my - oy) / scale;
+            const clickWorldZ = -(mx - ox) / scale;
 
             let tgtX = clickWorldX - dragOffset2D.x;
             let tgtZ = clickWorldZ - dragOffset2D.z;
@@ -3095,6 +3126,12 @@
             cv2.width = W; cv2.height = H; ctx2.clearRect(0, 0, W, H);
             const { scale, ox, oy } = get2DParams(W, H, L, forceW ? 150 : null);
 
+            ctx2.save();
+            // Rotate the entire canvas to make 40FR vertical (X axis goes down, Z axis goes left)
+            ctx2.translate(ox, oy);
+            ctx2.rotate(Math.PI / 2);
+            ctx2.translate(-ox, -oy);
+
             for (let i = 0; i < L.frCount; i++) {
                 const zOffset = (i - (L.frCount - 1) / 2) * FR_SPEC.W;
                 const rx = ox - (FR_SPEC.L / 2) * scale;
@@ -3117,13 +3154,23 @@
                     ctx2.fillStyle = '#ffffff';
                     ctx2.font = 'bold 15px Outfit'; ctx2.textBaseline = 'middle';
 
-                    // Left label
-                    ctx2.textAlign = 'right';
-                    ctx2.fillText(`40FR #${s.z + 1}`, rx - 15, ry + (FR_SPEC.W / 2) * scale);
+                    // Top label (visually)
+                    ctx2.save();
+                    ctx2.translate(rx - 15, ry + (FR_SPEC.W / 2) * scale);
+                    ctx2.rotate(-Math.PI / 2);
+                    ctx2.textAlign = 'center';
+                    ctx2.textBaseline = 'bottom';
+                    ctx2.fillText(`40FR #${L.frCount - s.z}`, 0, 0);
+                    ctx2.restore();
 
-                    // Right label
-                    ctx2.textAlign = 'left';
-                    ctx2.fillText(`40FR #${s.z + 1}`, rx + FR_SPEC.L * scale + 15, ry + (FR_SPEC.W / 2) * scale);
+                    // Bottom label (visually)
+                    ctx2.save();
+                    ctx2.translate(rx + FR_SPEC.L * scale + 15, ry + (FR_SPEC.W / 2) * scale);
+                    ctx2.rotate(-Math.PI / 2);
+                    ctx2.textAlign = 'center';
+                    ctx2.textBaseline = 'top';
+                    ctx2.fillText(`40FR #${L.frCount - s.z}`, 0, 0);
+                    ctx2.restore();
                 }
             });
 
@@ -3142,15 +3189,25 @@
                 if (L.shape === 'cylinder') { ctx2.beginPath(); ctx2.ellipse(ox + c.x * scale, oy + c.z * scale, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx2.stroke(); }
                 else { ctx2.strokeRect(bx, by, bw, bh); }
 
-                const fontSize = Math.min(14, bw / 10);
-                if (bw > 30 && bh > 20) {
+                const isVisuallyHorizontal = bh > bw;
+                const textSpanLimit = Math.max(bw, bh);
+                const fontSize = Math.min(14, textSpanLimit / 10);
+
+                if (bw > 20 && bh > 20) {
+                    ctx2.save();
+                    ctx2.translate(ox + c.x * scale, oy + c.z * scale);
+                    ctx2.rotate(isVisuallyHorizontal ? -Math.PI / 2 : 0);
+
                     ctx2.font = `bold ${fontSize}px Outfit, sans-serif`;
                     ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
                     ctx2.shadowColor = 'rgba(0,0,0,0.9)'; ctx2.shadowBlur = 4;
                     const txt = `[${idx + 1}] ${c.L}x${c.W}x${c.H}m ${c.wt}t`;
+
                     ctx2.strokeStyle = 'rgba(0,0,0,0.9)'; ctx2.lineWidth = 3;
-                    ctx2.strokeText(txt, ox + c.x * scale, oy + c.z * scale);
-                    ctx2.fillStyle = '#ffffff'; ctx2.fillText(txt, ox + c.x * scale, oy + c.z * scale);
+                    ctx2.strokeText(txt, 0, 0);
+                    ctx2.fillStyle = '#ffffff'; ctx2.fillText(txt, 0, 0);
+
+                    ctx2.restore();
                 }
                 ctx2.shadowBlur = 0;
             });
@@ -3259,13 +3316,40 @@
             // 2D Direction Labels
             ctx2.fillStyle = '#fbbf24'; ctx2.font = 'bold 18px Outfit';
             ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
-            const hGap = 110;
+            const hGap = 65;
             const vEdgeY = oy - (L.totalWid / 2) * scale - 40;
 
-            ctx2.fillText('AFT ◀', ox - (L.totalLen / 2) * scale - hGap, oy);
-            ctx2.fillText('▶ FWD', ox + (L.totalLen / 2) * scale + hGap, oy);
-            ctx2.fillText('PORT SIDE (PS)', ox, vEdgeY);
-            ctx2.fillText('STBD SIDE (SB)', ox, oy + (L.totalWid / 2) * scale + 40);
+            const vGap = 210; // Increased 40FR Width gap to distance PS/SB further
+
+            // FWD is Top visually
+            ctx2.save();
+            ctx2.translate(ox - (L.totalLen / 2) * scale - hGap, oy);
+            ctx2.rotate(-Math.PI / 2);
+            ctx2.fillText('▲ FWD', 0, 0);
+            ctx2.restore();
+
+            // AFT is Bottom visually
+            ctx2.save();
+            ctx2.translate(ox + (L.totalLen / 2) * scale + hGap, oy);
+            ctx2.rotate(-Math.PI / 2);
+            ctx2.fillText('▼ AFT', 0, 0);
+            ctx2.restore();
+
+            // STAR BOARD is Right visually (-Y unrotated maps to +X)
+            ctx2.save();
+            ctx2.translate(ox, oy - (L.totalWid / 2) * scale - vGap);
+            ctx2.rotate(-Math.PI / 2);
+            ctx2.fillText('STAR BOARD (SB) ▶', 0, 0);
+            ctx2.restore();
+
+            // PORT SIDE is Left visually (+Y unrotated maps to -X)
+            ctx2.save();
+            ctx2.translate(ox, oy + (L.totalWid / 2) * scale + vGap);
+            ctx2.rotate(-Math.PI / 2);
+            ctx2.fillText('◀ PORT SIDE (PS)', 0, 0);
+            ctx2.restore();
+
+            ctx2.restore(); // Restore global canvas rotation
         }
 
 
@@ -3284,9 +3368,20 @@
 
             const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
             ctx2.save();
-            if (Math.abs(x1 - x2) > Math.abs(y1 - y2)) ctx2.translate(mx, my - 12);
-            else { ctx2.translate(mx - 20, my); ctx2.rotate(-Math.PI / 2); }
 
+            const isVisuallyVertical = Math.abs(x1 - x2) > Math.abs(y1 - y2);
+
+            if (isVisuallyVertical) {
+                // Arrow is vertical on screen. Text placed to the RIGHT.
+                // Move visually RIGHT -> translate Y by negative value (my - 20).
+                ctx2.translate(mx, my - 20);
+            } else {
+                // Arrow is horizontal on screen. Text placed ABOVE.
+                // Move visually UP -> translate X by negative value (mx - 15).
+                ctx2.translate(mx - 15, my);
+            }
+
+            ctx2.rotate(-Math.PI / 2);
             ctx2.fillStyle = clr; ctx2.font = 'bold 12px JetBrains Mono';
             ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
             ctx2.shadowColor = 'rgba(0,0,0,0.8)'; ctx2.shadowBlur = 4;
@@ -3378,10 +3473,6 @@
                 cv2.style.display = v === '2d' ? 'block' : 'none';
             }
 
-            document.getElementById('hint-bubble').innerHTML =
-                v === '3d' ? 'Currently showing <b>3D DIGITAL TWIN</b>' :
-                    (v === '2d' ? 'Currently showing <b>TOP LOADING PLAN</b>' : 'Currently showing <b>HYBRID SPLIT VIEW</b>');
-
             document.getElementById('camera-card').style.display = (v === '3d' || v === 'split') ? 'block' : 'none';
             resize();
             uiUpdate();
@@ -3402,7 +3493,7 @@
         }
 
         function resetCamera() {
-            camera.position.set(20, 15, 25);
+            camera.position.set(35, 20, 0);
             controls.target.set(0, 2, 0);
             controls.update();
         }
@@ -3552,7 +3643,161 @@
             captureFrame();
         }
 
+        async function captureBtn(id) {
+            const el = document.getElementById(id);
+            if (!el) return null;
+            try {
+                const canvas = await html2canvas(el, {
+                    backgroundColor: '#0f172a',
+                    scale: 2,
+                    logging: false,
+                    useCORS: true
+                });
+                return canvas.toDataURL('image/png');
+            } catch (e) {
+                console.error("Capture failed for", id, e);
+                return null;
+            }
+        }
+
+
+
+        window.downloadManual = async function downloadManual(lang) {
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                const primary = [167, 139, 250];
+                const secondary = [15, 23, 42];
+                const now = new Date();
+
+                const mMenu = document.getElementById('manual-menu');
+                if (mMenu) mMenu.style.display = 'none';
+
+                const t = {
+                    en: {
+                        title: "ADVANCED TECHNICAL MANUAL & GUIDE",
+                        sub: "G.GAIN SOLUTION | BBK DIGITAL TWIN ENGINE V1.3",
+                        intro: "This documentation explores the core physics engine and logic of the BBK Stowage Planner, documenting all interface controls and calculation standards.",
+                        sec1: "INTERFACE & CORE FEATURES",
+                        features: [
+                            { title: "1. BBK Generation (ITEM LIST)", desc: "Input Length, Width, Height (LWH), WEIGHT, and color. Use the [ADD CARGO] button to register additional cargos with specified dimensions, weight, and color." },
+                            { title: "2. Cargo Positioning", desc: "Left-click and drag the BBK on the screen to set its position. Turning on SNAP ALIGNMENT automatically aligns the BBK to the center of the 40FR and relative to other BBKs." },
+                            { title: "3. Component Toggle", desc: "FR SANDWICH (support base) and WOODEN TIMBER (wooden skid) can be toggled ON/OFF." },
+                            { title: "4. Cargo Shape", desc: "Choose the CARGO SHAPE as either BOX or CYLINDER." },
+                            { title: "5. Loading Orientation", desc: "Select either ALONG SIDE or ATHWART SHIP to define the loading direction relative to the flat rack." },
+                            { title: "6. Lashing Simulation", desc: "Turn LASHING ON from the top menu and define the number of transverse and longitudinal lashings. If the lashing result is 'NOT OK', simply add more lashings until it reaches 'OK'. LASHING TYPE can be toggled between standard STRAP and strong CHAIN." },
+                            { title: "7. Slot Kill Appearance", desc: "Customize the interference zone by adjusting the color, grid OPACITY, and overall VISUAL EFFECT." },
+                            { title: "8. Container Units", desc: "Specify the total number of 40FR base units to be used." },
+                            { title: "9. 40FR Unit Specifications", desc: "Define the dimensions and maximum PAYLOAD capacity of the 40FR container." },
+                            { title: "10. Clearance Profile", desc: "Displays a simplified profile showing the physical clearance distances between the BBK, the 40FR boundaries, and grid lines. Visualizes the percentage of load distributed per 40FR unit and monitors payload utilization." },
+                            { title: "11. BBK Spec / Slot", desc: "Summarizes the total combined BBK weight and comprehensive SLOT KILL (lost slots) metrics gracefully on the right panel." },
+                            { title: "12. Camera Control", desc: "Enable auto-rotation around the BBK in 3D, and manually adjust the rotation speed and camera angles." },
+                            { title: "13. Lifting Side View", desc: "Simulates potential eccentric loads (imbalance) on the left or right sides during lifting operations from the detailed Side View mode." }
+                        ]
+                    },
+                    kr: {
+                        title: "고급 기술 매뉴얼 및 가이드",
+                        sub: "G.GAIN SOLUTION | BBK 디지털 트윈 ENGINE V1.3",
+                        intro: "본 매뉴얼은 BBK Stowage Planner의 핵심 물리 엔진 및 로직, 모든 인터페이스 제어 요소와 계산 표준에 대해 상세히 설명합니다.",
+                        sec1: "인터페이스 통합 기능 안내",
+                        features: [
+                            { title: "1. BBK 생성 (ITEM LIST)", desc: "LWH, WEIGHT를 입력하고 색상을 지정합니다. [ADD CARGO] 버튼을 눌러 추가 화물의 크기, 무게, 색상을 계속 지정할 수 있습니다." },
+                            { title: "2. 화물 위치 지정", desc: "화면에서 BBK를 마우스 왼쪽 버튼으로 드래그하여 위치를 지정합니다. SNAP ALIGNMENT를 ON으로 설정하면 BBK가 40FR의 중심 및 다른 BBK와 자동으로 정렬됩니다." },
+                            { title: "3. 부가 장치 설정", desc: "FR SANDWICH(서포트 베이스) 및 WOODEN TIMBER(목재 지지대) 기능을 ON/OFF 할 수 있습니다." },
+                            { title: "4. 화물 형태 지정", desc: "CARGO SHAPE 옵션에서 화물의 모양을 BOX(박스형) 또는 CYLINDER(원통형)로 선택할 수 있습니다." },
+                            { title: "5. 선적 방향 설정", desc: "ALONG SIDE(세로 방향) 또는 ATHWART SHIP(가로 방향)으로 적재 방향을 선택할 수 있습니다." },
+                            { title: "6. 래싱 시뮬레이션 (LASHING)", desc: "상단 메뉴에서 LASHING을 ON으로 활성화하고, 가로/세로 래싱의 개수를 지정할 수 있습니다. 결과가 'NOT OK'일 경우 'OK'가 될 때까지 개수를 추가하면 됩니다. 일반 STRAP과 CHAIN 중 선택할 수 있습니다." },
+                            { title: "7. 슬롯 킬 외관 (SLOT KILL)", desc: "슬롯 킬 영역의 색깔, 격자의 투명도(OPACITY), 그리고 시각적 효과(VISUAL EFFECT)를 지정할 수 있습니다." },
+                            { title: "8. 컨테이너 유닛 (UNITS)", desc: "사용할 40FR 컨테이너의 개수를 직접 조정할 수 있습니다." },
+                            { title: "9. 40FR 유닛 제원 (SPEC)", desc: "40FR 컨테이너의 기본 크기와 최대 허용 하중(PAYLOAD)을 정의할 수 있습니다." },
+                            { title: "10. 여유 공간 프로필", desc: "BBK와 40FR 간의 거리, 격자 간의 간격 등 필수 여유 공간 수치를 직관적으로 보여주며, 하단에서 각 40FR 당 하중이 전달되는 비율과 PAYLOAD 대비 사용량을 제공합니다." },
+                            { title: "11. 화물 스펙 및 슬롯 제한", desc: "우측 패널에서 탑재된 전체 BBK의 총 무게 및 발생한 SLOT KILL(손실 슬롯) 정보를 종합적으로 보여줍니다." },
+                            { title: "12. 카메라 컨트롤 (CAMERA)", desc: "BBK를 중심으로 3D 화면을 자동 회전시킬 수 있으며, 회전 속도 및 카메라 각도를 세밀하게 조절할 수 있습니다." },
+                            { title: "13. 리프팅 측면 뷰 (LIFTING)", desc: "사이드 뷰 모드에서 대상 화물을 들어올릴 때 좌우에 편하중(쏠림 현상)이 발생하는지 실시간으로 시뮬레이션할 수 있습니다." }
+                        ]
+                    }
+                }[lang] || { title: "Error", sub: "", intro: "", sec1: "", features: [] };
+
+                const drawHeader = () => {
+                    doc.setFillColor(secondary[0], secondary[1], secondary[2]);
+                    doc.rect(0, 0, 210, 40, 'F');
+                    doc.setTextColor(255); doc.setFontSize(22); doc.setFont("helvetica", "bold");
+                    doc.text("BBK DIGITAL TWIN ENGINE V1.3", 15, 20);
+                    doc.setFontSize(10); doc.setFont("helvetica", "normal");
+                    doc.text("ADVANCED TECHNICAL MANUAL & GUIDE", 15, 30);
+                    doc.setDrawColor(primary[0], primary[1], primary[2]);
+                    doc.setLineWidth(1);
+                    doc.line(15, 33, 195, 33);
+                };
+
+                const drawFooter = (page) => {
+                    doc.setPage(page);
+                    doc.setTextColor(150); doc.setFontSize(7);
+                    doc.text(`Page ${page} | TECHNICAL DOCUMENTATION | G.GAIN SOLUTION`, 105, 285, { align: 'center' });
+                    doc.text("Copyright © 2026 THE END - YS KIM. All Rights Reserved.", 105, 290, { align: 'center' });
+                };
+
+                drawHeader();
+                drawFooter(1);
+                let y = 50;
+
+                // Invisible DOM element to allow browser to use its native fonts and styling
+                // which is then captured safely via html2canvas to the PDF.
+                const renderTextAsImage = async (htmlContent, startY, pxH = 150) => {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.style.position = 'absolute';
+                    tempDiv.style.left = '-9999px';
+                    tempDiv.style.top = '-9999px';
+                    tempDiv.style.width = '700px';
+                    tempDiv.style.minHeight = '100px';
+                    tempDiv.style.background = '#ffffff';
+                    tempDiv.style.color = '#000000';
+                    tempDiv.style.fontFamily = 'sans-serif';
+                    tempDiv.innerHTML = htmlContent;
+                    document.body.appendChild(tempDiv);
+
+                    const canvas = await html2canvas(tempDiv, { scale: 2.5, backgroundColor: null });
+                    document.body.removeChild(tempDiv);
+
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdfWidth = 180;
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                    if (startY + pdfHeight > 265) {
+                        doc.addPage();
+                        drawHeader();
+                        drawFooter(doc.internal.getNumberOfPages());
+                        startY = 50;
+                    }
+
+                    doc.addImage(imgData, 'PNG', 15, startY, pdfWidth, pdfHeight);
+                    return startY + pdfHeight + 4;
+                };
+
+                y = await renderTextAsImage(`
+                        <h1 style="color:#0f172a; margin:10px 0; font-size:29px; padding:0;">${t.title}</h1>
+                        <p style="color:#334155; margin:0; font-size:19px; line-height:1.4;">${t.intro}</p>
+                        <h2 style="color:#1e293b; border-bottom:3px solid #8b5cf6; padding-bottom:5px; margin-top:20px; margin-bottom:0; font-size:22px;">${t.sec1}</h2>
+                    `, y);
+
+                for (const f of t.features) {
+                    y = await renderTextAsImage(`
+                            <div style="border-left: 6px solid #8b5cf6; padding-left: 20px; padding-top: 8px; padding-bottom: 8px; margin-bottom: 5px;">
+                                <h3 style="color:#4f46e5; margin:0 0 8px 0; font-size:22px;">${f.title}</h3>
+                                <p style="color:#475569; margin:0; font-size:18px; line-height:1.5; font-weight: 500;">${f.desc}</p>
+                            </div>
+                        `, y);
+                }
+
+                doc.save(`BBK_DigitalTwin_Manual_${lang}_${now.getTime()}.pdf`);
+            } catch (err) {
+                alert("Critical Error during PDF Generation:\n" + err.message);
+                console.error("PDF MANUAL ERROR:", err);
+            }
+        }
+
         async function downloadPDF() {
+            console.log('downloadPDF START');
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             const L = getLayout();
@@ -3602,17 +3847,22 @@
                 doc.setFillColor(...secondary); doc.rect(0, 0, 210, 30, 'F');
                 doc.setTextColor(255); doc.setFontSize(22); doc.setFont("helvetica", "bold");
                 doc.text("Lashcon IMO: G.GAIN SOLUTION Stowage Report", 12, 18);
-                doc.setFontSize(9); doc.setFont("helvetica", "normal");
-                doc.text(`DATE: ${dateStr}`, 160, 10);
-                doc.text(`TIME: ${timeStr}`, 160, 15);
-                doc.text(`REF: GS-STW-PNR-1.0`, 160, 20);
-                doc.line(10, 22, 120, 22);
-                doc.setFontSize(7); doc.text("Code of Safe Practice for Cargo Stowage and Securing 2003, Annex 13", 12, 26);
+                doc.setDrawColor(59, 130, 246);
+                doc.line(10, 22, 200, 22);
+                doc.setFontSize(7); doc.setFont("helvetica", "normal");
+                doc.text("Code of Safe Practice for Cargo Stowage and Securing 2003, Annex 13", 12, 27);
             };
 
             // ──────── PAGE 1: TECHNICAL DATA ────────
             drawHeader();
-            let y = 45; doc.setTextColor(0);
+            let y = 36; doc.setTextColor(0);
+
+            // Meta info bar (page 1 only)
+            doc.setFillColor(240, 244, 248); doc.rect(0, 30, 210, 10, 'F');
+            doc.setTextColor(80); doc.setFontSize(8); doc.setFont("helvetica", "normal");
+            doc.text(`DATE: ${dateStr}   TIME: ${timeStr}   REF: GS-STW-PNR-1.0`, 12, 37);
+            doc.setTextColor(0);
+            y = 48;
 
             // New Section: General View & Summary
             doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.text("GENERAL VIEW & SUMMARY", 12, y);
@@ -3727,6 +3977,10 @@
             uiUpdate();
         }
 
+        function toggleManualMenu() {
+            const m = document.getElementById('manual-menu');
+            m.style.display = m.style.display === 'none' ? 'block' : 'none';
+        }
 
         (function anim() {
             requestAnimationFrame(anim);
