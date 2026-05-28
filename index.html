@@ -643,6 +643,127 @@
             text-align: right;
         }
 
+        /* Formula Box */
+        .fc-formula-box {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            display: flex;
+            gap: 40px;
+            background: none;
+            backdrop-filter: none;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+            z-index: 100;
+        }
+
+        .formula-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .formula-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .formula-item.active .formula-label {
+            color: #ccff00;
+            /* Neon Yellow/Green */
+            text-shadow: 0 0 10px rgba(204, 255, 0, 0.8);
+        }
+
+        .formula-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 700;
+            transition: all 0.3s;
+        }
+
+        .formula-math {
+            font-size: 15px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.9);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .formula-res {
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 2px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .formula-item.active .formula-res {
+            color: #00ffff;
+            /* Neon Cyan */
+            text-shadow: 0 0 12px rgba(0, 255, 255, 0.9);
+            background: rgba(0, 255, 255, 0.1);
+        }
+
+        /* Physics Info Panel - Text Only */
+        .fc-physics-info {
+            position: absolute;
+            top: 30px;
+            right: 380px;
+            /* To the left of the side panel */
+            max-width: 450px;
+            background: none;
+            backdrop-filter: none;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+            line-height: 1.6;
+            z-index: 90;
+            pointer-events: none;
+            text-align: left;
+        }
+
+        .fc-physics-info h4 {
+            margin: 0 0 12px 0;
+            color: #fff;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 800;
+        }
+
+        .info-desc {
+            margin-bottom: 12px;
+        }
+
+        .info-desc strong {
+            display: block;
+            color: var(--accent);
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+            letter-spacing: 0.05em;
+            transition: color 0.3s;
+        }
+
+        .info-desc.active strong {
+            color: #ccff00;
+            /* Neon highlight */
+            text-shadow: 0 0 8px rgba(204, 255, 0, 0.6);
+        }
+
+        .info-desc.active {
+            color: #fff;
+        }
+
         .fc-stat-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -1192,13 +1313,49 @@
 
             <div id="fc-container">
                 <canvas id="fc-canvas"></canvas>
+
+                <!-- Formula Legend -->
+                <div class="fc-formula-box">
+                    <div class="formula-item" id="fi-axial" onclick="toggleFCHighlight('axial')">
+                        <span class="formula-label">AXIAL FORCE (BOOM LOAD)</span>
+                        <span class="formula-math">W / sin(<span class="fc-curr-ang">45</span>°)</span>
+                        <span class="formula-res" id="fr-axial">0.0 t</span>
+                    </div>
+                    <div class="formula-item" id="fi-horizontal" onclick="toggleFCHighlight('horizontal')">
+                        <span class="formula-label">HORIZONTAL FORCE</span>
+                        <span class="formula-math">W / tan(<span class="fc-curr-ang">45</span>°)</span>
+                        <span class="formula-res" id="fr-horizontal">0.0 t</span>
+                    </div>
+                    <div class="formula-item" id="fi-radius" onclick="toggleFCHighlight('radius')">
+                        <span class="formula-label">RADIUS (REACH)</span>
+                        <span class="formula-math">L × cos(<span class="fc-curr-ang">45</span>°)</span>
+                        <span class="formula-res" id="fr-radius">0.0 m</span>
+                    </div>
+                </div>
+
+                <div class="fc-physics-info">
+                    <h4>PHYSICS REFERENCE</h4>
+                    <div class="info-desc" id="id-axial">
+                        <strong>AXIAL FORCE (BOOM LOAD)</strong>
+                        Primary compression acting directly on the boom structure.<br>Check this against structural
+                        limits.
+                    </div>
+                    <div class="info-desc" id="id-horizontal">
+                        <strong>HORIZONTAL FORCE</strong>
+                        Lateral load component contributing to the overturning moment<br>and barge list.
+                    </div>
+                    <div class="info-desc" id="id-radius">
+                        <strong>RADIUS (REACH)</strong>
+                        Horizontal distance from the pivot point. Crucial to determine<br>Safe Working Load (SWL).
+                    </div>
+                </div>
                 <div class="fc-overlay-card">
                     <div class="card-h">
                         <span>F/C Freeboard Check</span>
                     </div>
                     <div class="fc-input-row">
                         <label>Vessel Freeboard (m)</label>
-                        <input type="number" id="fc-vessel-fb" value="35.4" step="0.1" oninput="updateFC()">
+                        <input type="number" id="fc-vessel-fb" value="35" step="0.1" oninput="updateFC()">
                     </div>
                     <div class="fc-input-row">
                         <label>F/C Freeboard (m)</label>
@@ -1206,15 +1363,23 @@
                     </div>
                     <div class="fc-input-row">
                         <label>Vessel - F/C Dist (m)</label>
-                        <input type="number" id="fc-dist" value="71.2" step="0.1" oninput="updateFC()">
+                        <input type="number" id="fc-dist" value="60" step="0.1" oninput="updateFC()">
                     </div>
-                    <div class="fc-input-row">
+                    <div class="fc-input-row" style="margin-bottom:4px;">
                         <label>Boom Length (m)</label>
-                        <input type="number" id="fc-boom-len" value="109.4" step="0.1" oninput="updateFC()">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="fc-boom-lock" title="Lock Length"
+                                style="width:16px; height:16px; cursor:pointer;" onchange="updateFC()">
+                            <input type="number" id="fc-boom-len" value="65" step="0.1" oninput="updateFC()">
+                        </div>
+                    </div>
+                    <div
+                        style="font-size:13px; color:var(--accent); text-align:right; margin-bottom:12px; padding-right:5px; font-weight:600;">
+                        350MT=65m, 1200MT=95m
                     </div>
                     <div class="fc-input-row">
                         <label>Boom Angle (deg)</label>
-                        <input type="number" id="fc-boom-angle" value="44" step="1" oninput="updateFC()">
+                        <input type="number" id="fc-boom-angle" value="45" step="1" oninput="updateFC()">
                     </div>
                     <div class="fc-input-row">
                         <label>Lifting Length (m)</label>
@@ -1223,6 +1388,14 @@
                     <div class="fc-input-row">
                         <label>BBK Weight (ton)</label>
                         <input type="number" id="fc-bbk-wt" value="100" step="1" oninput="updateFC()">
+                    </div>
+                    <div class="fc-input-row">
+                        <label>BBK Length (m)</label>
+                        <input type="number" id="fc-bbk-len" value="10.0" step="0.1" oninput="updateFC()">
+                    </div>
+                    <div class="fc-input-row">
+                        <label>BBK Height (m)</label>
+                        <input type="number" id="fc-bbk-height" value="6.0" step="0.1" oninput="updateFC()">
                     </div>
 
                     <div class="fc-stat-grid">
@@ -1431,6 +1604,13 @@
             <!-- Hint bubble removed -->
         </div>
     </div>
+
+    <style>
+        .info-desc.active {
+            border: 1px solid var(--accent2);
+            background: rgba(59, 130, 246, 0.1);
+        }
+    </style>
 
     <script>
         /* ──────── STATE & PERSISTENCE ──────── */
@@ -3671,13 +3851,17 @@
         const cvFC = document.getElementById('fc-canvas');
         const ctxFC = cvFC ? cvFC.getContext('2d') : null;
         let fcState = {
-            vesselFB: 35.4,
+            vesselFB: 35,
             craneFB: 2.5,
-            dist: 71.2,
-            boomLen: 109.4,
-            boomAngle: 44,
+            dist: 60,
+            boomLen: 65,
+            boomAngle: 45,
             liftLen: 30.0,
             bbkWt: 100,
+            bbkL: 10.0,
+            bbkH: 6.0,
+            zoom: 5.0,
+            highlightMode: null,
             isDragging: false,
             dragPart: null,
             parts: []
@@ -3692,6 +3876,8 @@
             fcState.boomAngle = parseFloat(document.getElementById('fc-boom-angle').value);
             fcState.liftLen = parseFloat(document.getElementById('fc-lift-len').value);
             fcState.bbkWt = parseFloat(document.getElementById('fc-bbk-wt').value);
+            fcState.bbkL = parseFloat(document.getElementById('fc-bbk-len').value) || 12.0;
+            fcState.bbkH = parseFloat(document.getElementById('fc-bbk-height').value) || 4.0;
             updateFC();
         }
 
@@ -3704,6 +3890,37 @@
             fcState.boomAngle = parseFloat(document.getElementById('fc-boom-angle').value) || 0;
             fcState.liftLen = parseFloat(document.getElementById('fc-lift-len').value) || 0;
             fcState.bbkWt = parseFloat(document.getElementById('fc-bbk-wt').value) || 0;
+            fcState.bbkL = parseFloat(document.getElementById('fc-bbk-len').value) || 12.0;
+            fcState.bbkH = parseFloat(document.getElementById('fc-bbk-height').value) || 4.0;
+
+            // Update formula θ values
+            const angEls = document.querySelectorAll('.fc-curr-ang');
+            angEls.forEach(el => el.textContent = Math.round(fcState.boomAngle));
+
+            const angleRad = (fcState.boomAngle * Math.PI) / 180;
+            const axial = fcState.bbkWt / Math.sin(angleRad);
+            const horizontal = fcState.bbkWt / Math.tan(angleRad);
+            const radius = fcState.boomLen * Math.cos(angleRad);
+
+            document.getElementById('fr-axial').textContent = isFinite(axial) ? axial.toFixed(2) + ' t' : '---';
+            document.getElementById('fr-horizontal').textContent = isFinite(horizontal) ? horizontal.toFixed(2) + ' t' : '---';
+            document.getElementById('fr-radius').textContent = radius.toFixed(2) + ' m';
+
+            drawFC();
+        };
+
+        window.toggleFCHighlight = function (mode) {
+            if (fcState.highlightMode === mode) {
+                fcState.highlightMode = null;
+            } else {
+                fcState.highlightMode = mode;
+            }
+            document.querySelectorAll('.formula-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.info-desc').forEach(el => el.classList.remove('active'));
+            if (fcState.highlightMode) {
+                document.getElementById('fi-' + fcState.highlightMode).classList.add('active');
+                document.getElementById('id-' + fcState.highlightMode).classList.add('active');
+            }
             drawFC();
         };
 
@@ -3714,7 +3931,7 @@
             cvFC.width = W; cvFC.height = H;
             ctxFC.clearRect(0, 0, W, H);
 
-            const scale = 5; // pixels per meter
+            const scale = fcState.zoom; // pixels per meter
             const ox = W * 0.3;
             const oy = H * 0.7;
 
@@ -3763,8 +3980,8 @@
             ctxFC.fillText('F/C', cX + craneW / 2, cY + cFullH / 2);
             ctxFC.textBaseline = 'alphabetic'; // Reset baseline
 
-            // Boom pivot
-            const pivotX = cX + 5 * scale;
+            // Boom pivot (Moved to center of F/C barge)
+            const pivotX = cX + craneW / 2;
             const pivotY = cY;
 
             // Boom
@@ -3810,15 +4027,36 @@
             const textR = arcR + 25;
             ctxFC.fillText(drawingAngle + '°', tipX + textR * Math.cos(midAngle), tipY + textR * Math.sin(midAngle));
 
+            // Pivot Angle (Angle from Horizontal - θ) - ABOVE DECK
+            ctxFC.beginPath();
+            ctxFC.strokeStyle = '#fbbf24'; // Amber/Yellow
+            ctxFC.lineWidth = 3;
+            const pArcR = 70;
+            const bDir = Math.atan2(tipY - pivotY, tipX - pivotX);
+            // From horizontal left (Math.PI) to boom direction (bDir), CW (false)
+            ctxFC.arc(pivotX, pivotY, pArcR, Math.PI, bDir, false);
+            ctxFC.stroke();
+
+            // Mid angle for text - ensure it handles the wrap around correctly
+            let midA = (Math.PI + bDir) / 2;
+            if (bDir < 0) midA = (Math.PI + (Math.PI * 2 + bDir)) / 2;
+            ctxFC.fillStyle = '#fbbf24';
+            ctxFC.font = 'bold 18px JetBrains Mono';
+            ctxFC.textAlign = 'center';
+            ctxFC.fillText(Math.round(fcState.boomAngle) + '°', pivotX + (pArcR + 35) * Math.cos(midA), pivotY + (pArcR + 35) * Math.sin(midA));
+
+
             // Labels from drawing
             ctxFC.fillStyle = '#fff';
             ctxFC.font = 'bold 13px Outfit';
             ctxFC.textAlign = 'right';
-            ctxFC.fillText('Length of', tipX - 15, (tipY + liftEndY) / 2 - 8);
-            ctxFC.fillText('F/C lifting', tipX - 15, (tipY + liftEndY) / 2 + 8);
+            ctxFC.fillText('Headroom', tipX - 15, (tipY + liftEndY) / 2);
+            ctxFC.fillStyle = '#60a5fa';
+            ctxFC.font = 'bold 12px JetBrains Mono';
+            ctxFC.fillText(fcState.liftLen.toFixed(1) + 'm', tipX - 15, (tipY + liftEndY) / 2 + 15);
 
             ctxFC.textAlign = 'left';
-            ctxFC.fillText('F/C Boom', (pivotX + tipX) / 2 + 20, (pivotY + tipY) / 2);
+            ctxFC.fillText('F/C Boom (' + fcState.boomLen.toFixed(1) + 'm)', (pivotX + tipX) / 2 + 20, (pivotY + tipY) / 2);
 
             // Removed redundant Freeboard label
 
@@ -3830,51 +4068,115 @@
             ctxFC.fillText(fcState.dist.toFixed(1) + 'm', (vX + cX) / 2, oy + 65);
 
             // BBK
-            const bbkW = 6 * scale;
-            const bbkH = 4 * scale;
+            const bbkW = fcState.bbkL * scale;
+            const bbkH = fcState.bbkH * scale;
             ctxFC.fillStyle = '#ef4444';
             ctxFC.fillRect(liftEndX - bbkW / 2, liftEndY, bbkW, bbkH);
+
+            // Labels
             ctxFC.fillStyle = '#fff';
             ctxFC.textAlign = 'center';
-            ctxFC.font = 'bold 10px Outfit';
+            ctxFC.font = 'bold 11px Outfit';
             ctxFC.fillText('BBK', liftEndX, liftEndY + bbkH / 2 + 4);
-
-            // Stats
-            const boomLoad = fcState.bbkWt / Math.sin(angleRad);
-            document.getElementById('fc-res-load').textContent = isFinite(boomLoad) ? boomLoad.toFixed(1) + ' t' : '---';
-
-            const clearance = liftEndY - vY;
-            const clrM = -(clearance / scale); // negative means above deck
-            const clrEl = document.getElementById('fc-res-clr');
-            clrEl.textContent = clrM.toFixed(2) + ' m';
-            clrEl.style.color = clrM > 0.5 ? 'var(--green)' : 'var(--red)';
 
             const reachM = (vX - tipX) / scale;
             const rowWidth = 2.44;
             const rows = reachM <= 0 ? 0 : Math.ceil(reachM / rowWidth);
             const reachText = reachM.toFixed(2) + 'm (' + rows + ' rows)';
+
+            ctxFC.fillStyle = '#60a5fa';
+            ctxFC.font = 'bold 11px JetBrains Mono';
+            ctxFC.fillText(reachText, liftEndX, liftEndY + bbkH + 12);
+
+            ctxFC.fillStyle = 'rgba(148, 163, 184, 0.8)';
+            ctxFC.font = '500 10px Outfit';
+            ctxFC.fillText('Reach', liftEndX, liftEndY + bbkH + 22);
+
             document.getElementById('fc-res-reach').textContent = reachText;
+
+            // Update bottom stats (Fixing the 0 values issue)
+            const axialRes = fcState.bbkWt / Math.sin(angleRad);
+            document.getElementById('fc-res-load').textContent = isFinite(axialRes) ? axialRes.toFixed(1) + ' t' : '---';
+            const clearanceM = -((liftEndY - vY) / scale);
+            const clrResEl = document.getElementById('fc-res-clr');
+            clrResEl.textContent = clearanceM.toFixed(2) + ' m';
+            clrResEl.style.color = clearanceM > 0.5 ? 'var(--green)' : 'var(--red)';
+
+            // Breathing effect values
+            const pulse = (Math.sin(Date.now() / 400) + 1) / 2; // 0.0 to 1.0
+            const neonOpacity = 0.2 + (pulse * 0.5); // 0.2 to 0.7
+            const neonBlur = 10 + (pulse * 15);     // 10 to 25
+
+            // DRAW HIGHLIGHTS (Neon colors)
+            if (fcState.highlightMode === 'axial') {
+                ctxFC.save();
+                ctxFC.strokeStyle = '#00ffff'; // Neon Cyan
+                ctxFC.shadowColor = '#00ffff';
+                ctxFC.shadowBlur = neonBlur;
+                ctxFC.lineWidth = 14;
+                ctxFC.globalAlpha = neonOpacity;
+                ctxFC.beginPath(); ctxFC.moveTo(pivotX, pivotY); ctxFC.lineTo(tipX, tipY); ctxFC.stroke();
+                ctxFC.restore();
+            } else if (fcState.highlightMode === 'horizontal') {
+                ctxFC.save();
+                ctxFC.strokeStyle = '#ccff00'; // Neon Yellow-Green
+                ctxFC.shadowColor = '#ccff00';
+                ctxFC.shadowBlur = neonBlur;
+                ctxFC.lineWidth = 12;
+                ctxFC.globalAlpha = neonOpacity;
+                ctxFC.beginPath();
+                ctxFC.moveTo(tipX, tipY);
+                ctxFC.lineTo(pivotX, tipY);
+                ctxFC.stroke();
+                ctxFC.restore();
+            } else if (fcState.highlightMode === 'radius') {
+                ctxFC.save();
+                ctxFC.strokeStyle = '#00ffaa'; // Neon Mint
+                ctxFC.shadowColor = '#00ffaa';
+                ctxFC.shadowBlur = neonBlur;
+                ctxFC.lineWidth = 12;
+                ctxFC.globalAlpha = neonOpacity;
+                ctxFC.beginPath();
+                ctxFC.moveTo(pivotX, pivotY);
+                ctxFC.lineTo(tipX, pivotY);
+                ctxFC.stroke();
+
+                // Ground projection helper
+                ctxFC.lineWidth = 2;
+                ctxFC.setLineDash([5, 5]);
+                ctxFC.beginPath();
+                ctxFC.moveTo(tipX, pivotY);
+                ctxFC.lineTo(tipX, tipY);
+                ctxFC.stroke();
+                ctxFC.restore();
+            }
 
             // Dimensions (Small labels next to lines)
             ctxFC.font = '11px JetBrains Mono';
             drawFCDim(vX, vY, vX, oy, fcState.vesselFB.toFixed(1) + 'm', 'Freeboard', true);
-            // Reach dimension line
-            drawFCDim(vX, vY - 20, tipX, vY - 20, reachText, 'Reach', false);
+            // Reach dimension line (Dashed only, no duplicate text)
+            drawFCDim(vX, vY - 20, tipX, vY - 20, '', '', false);
             ctxFC.setLineDash([3, 3]);
             ctxFC.strokeStyle = 'rgba(255,255,255,0.2)';
             ctxFC.beginPath(); ctxFC.moveTo(vX, oy + 60); ctxFC.lineTo(cX, oy + 60); ctxFC.stroke();
             ctxFC.setLineDash([]);
 
             // Vessel Width dimension at the bottom
-            drawFCDim(vX - vesselW, oy + 20, vX, oy + 20, '45.0m', 'Vessel Width', false);
+            drawFCDim(vX - vesselW, oy + 20, vX, oy + 20, '45.0m', 'Vessel Beam', false);
 
             // Drag targets
             fcState.parts = [
                 { id: 'vessel', x: vX - vesselW / 2, y: vY + vFullH / 2, w: vesselW, h: vFullH },
                 { id: 'crane', x: cX + craneW / 2, y: cY + cFullH / 2, w: craneW, h: cFullH },
                 { id: 'boom-tip', x: tipX, y: tipY, r: 25 },
-                { id: 'boom-body', p1: { x: pivotX, y: pivotY }, p2: { x: tipX, y: tipY }, hitDist: 15 }
+                { id: 'boom-body', p1: { x: pivotX, y: pivotY }, p2: { x: tipX, y: tipY }, hitDist: 15 },
+                { id: 'bbk', x: liftEndX, y: liftEndY + bbkH / 2, w: bbkW, h: bbkH }
             ];
+
+            // Loop animation for breathing effect
+            if (fcState.highlightMode && state.view === 'fc') {
+                requestAnimationFrame(drawFC);
+            }
         }
 
         function drawFCDim(x1, y1, x2, y2, val, label, isVertical) {
@@ -3940,14 +4242,26 @@
                     document.getElementById('fc-dist').value = newDist.toFixed(1);
                 } else if (fcState.dragPart === 'boom-tip' || fcState.dragPart === 'boom-body') {
                     const cX = ox + fcState.dist * scale, cY = oy - fcState.craneFB * scale;
-                    const pivotX = cX + 5 * scale, pivotY = cY;
+                    const craneW = 35 * scale;
+                    const pivotX = cX + craneW / 2, pivotY = cY;
                     const dx = pivotX - mx, dy = pivotY - my;
                     const newAngle = Math.atan2(dy, dx) * 180 / Math.PI;
-                    if (fcState.dragPart === 'boom-tip') {
+                    const isLocked = document.getElementById('fc-boom-lock').checked;
+
+                    if (fcState.dragPart === 'boom-tip' && !isLocked) {
                         const newLen = Math.sqrt(dx * dx + dy * dy) / scale;
                         document.getElementById('fc-boom-len').value = newLen.toFixed(1);
                     }
                     document.getElementById('fc-boom-angle').value = Math.max(10, Math.min(85, Math.round(newAngle)));
+                } else if (fcState.dragPart === 'bbk') {
+                    const cX = ox + fcState.dist * scale, cY = oy - fcState.craneFB * scale;
+                    const craneW = 35 * scale;
+                    const pivotX = cX + craneW / 2, pivotY = cY;
+                    const angleRad = (fcState.boomAngle * Math.PI) / 180;
+                    const tipY = pivotY - fcState.boomLen * Math.sin(angleRad) * scale;
+
+                    const newLiftLen = Math.max(1, (my - tipY) / scale);
+                    document.getElementById('fc-lift-len').value = newLiftLen.toFixed(1);
                 }
                 updateFC();
             });
@@ -3956,6 +4270,13 @@
                 fcState.isDragging = false;
                 fcState.dragPart = null;
             });
+
+            cvFC.addEventListener('wheel', e => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                fcState.zoom = Math.max(1, Math.min(30, fcState.zoom * delta));
+                updateFC();
+            }, { passive: false });
         }
 
         function setOrient(o) {
