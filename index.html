@@ -1244,6 +1244,13 @@
                     </div>
                     <button class="circ-btn" onclick="adjFR(1)">+</button>
                 </div>
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">🖱️ FR
+                        ADD/DEL MODE</label>
+                    <button class="btn-choice" id="btn-fr-edit" style="padding: 4px 12px; font-size: 11px; width: auto;"
+                        onclick="toggleFREditMode()">OFF</button>
+                </div>
             </div>
 
             <!-- FR SPEC EDITOR -->
@@ -1620,7 +1627,8 @@
             isSandwich: false, isTimber: false, showLashing: false, tLashCount: 4, lLashCount: 2,
             tVLashCount: 2, lVLashCount: 2, showLifting: false,
             skColor: '#ef4444', skOpacity: 0.12, skEffect: 'none',
-            lashType: 'strap', lashMSL: 100, zoom2D: 1.0, showWarningLash: true, showVLashing: true
+            lashType: 'strap', lashMSL: 100, zoom2D: 1.0, showWarningLash: true, showVLashing: true,
+            isFREditMode: false, hiddenFRs: []
         };
 
         const LASH_MSL_MAP = {
@@ -1635,6 +1643,7 @@
             localStorage.setItem('BBK_FR_SPEC', JSON.stringify(FR_SPEC));
             localStorage.setItem('BBK_STATE', JSON.stringify(state));
             localStorage.setItem('BBK_CARGOS', JSON.stringify(cargosData));
+            localStorage.setItem('BBK_HIDDEN_FRS', JSON.stringify(state.hiddenFRs));
         }
 
         function loadSystem() {
@@ -1642,6 +1651,7 @@
                 const sSpec = localStorage.getItem('BBK_FR_SPEC'); if (sSpec) FR_SPEC = JSON.parse(sSpec);
                 const sState = localStorage.getItem('BBK_STATE'); if (sState) state = Object.assign(state, JSON.parse(sState));
                 const sCargos = localStorage.getItem('BBK_CARGOS'); if (sCargos) cargosData = JSON.parse(sCargos);
+                const sHiddenFRs = localStorage.getItem('BBK_HIDDEN_FRS'); if (sHiddenFRs) state.hiddenFRs = JSON.parse(sHiddenFRs);
             } catch (e) { console.error("Load failed", e); }
         }
 
@@ -2268,6 +2278,8 @@
             let killedSlots = [];
             // Base FR physical slots first
             for (let baseZ = 0; baseZ < frCount; baseZ++) {
+                const relZ = baseZ - (frCount - 1) / 2;
+                if (state.hiddenFRs.includes(relZ)) continue;
                 killedSlots.push({ x: 0, y: 0, z: baseZ });
             }
 
@@ -2676,7 +2688,10 @@
 
             // Base FRs
             for (let i = 0; i < L.frCount; i++) {
-                const z = (i - (L.frCount - 1) / 2) * FR_SPEC.W;
+                const relZ = i - (L.frCount - 1) / 2;
+                if (state.hiddenFRs.includes(relZ)) continue;
+
+                const z = relZ * FR_SPEC.W;
 
                 // Top FR (Blue)
                 const geo = new THREE.BoxGeometry(FR_SPEC.L, BASE_H, FR_SPEC.W);
@@ -3318,6 +3333,42 @@
             const mx = e.clientX - rect.left;
             const my = e.clientY - rect.top;
 
+            if (state.isFREditMode) {
+                // Determine which FR slot was clicked
+                for (let i = 0; i < LInfo.frCount; i++) {
+                    const zOffset = (i - (LInfo.frCount - 1) / 2) * FR_SPEC.W;
+                    const rx = ox - (FR_SPEC.L / 2) * scale;
+                    const ry = oy + (zOffset - FR_SPEC.W / 2) * scale;
+                    // Note: Since the canvas is rotated in draw2D, we need to match that logic
+                    // In draw2D: translate(ox, oy), rotate(PI/2), translate(-ox, -oy)
+                    // The drawing coords (rx, ry) are after this rotation.
+                    // To hit test mx, my against rx, ry is complex if coordinates are rotated.
+                    // Let's use the world space target calculation instead.
+                }
+
+                const clickWorldX = (my - oy) / scale;
+                const clickWorldZ = -(mx - ox) / scale;
+
+                // Check if clicked within X bounds [-L/2, L/2]
+                if (clickWorldX >= -FR_SPEC.L / 2 && clickWorldX <= FR_SPEC.L / 2) {
+                    const relZ = Math.round(clickWorldZ / FR_SPEC.W * 10) / 10;
+                    // Find which base slot this corresponds to
+                    for (let i = 0; i < LInfo.frCount; i++) {
+                        const slotRelZ = i - (LInfo.frCount - 1) / 2;
+                        if (Math.abs(clickWorldZ - slotRelZ * FR_SPEC.W) < FR_SPEC.W / 2) {
+                            if (state.hiddenFRs.includes(slotRelZ)) {
+                                state.hiddenFRs = state.hiddenFRs.filter(z => z !== slotRelZ);
+                            } else {
+                                state.hiddenFRs.push(slotRelZ);
+                            }
+                            uiUpdate();
+                            return;
+                        }
+                    }
+                }
+                return;
+            }
+
             for (let i = cargosData.length - 1; i >= 0; i--) {
                 const c = cargosData[i];
                 const cL = state.orient === 'along' ? c.L : c.W;
@@ -3484,7 +3535,10 @@
             ctx2.translate(-ox, -oy);
 
             for (let i = 0; i < L.frCount; i++) {
-                const zOffset = (i - (L.frCount - 1) / 2) * FR_SPEC.W;
+                const relZ = i - (L.frCount - 1) / 2;
+                if (state.hiddenFRs.includes(relZ)) continue;
+
+                const zOffset = relZ * FR_SPEC.W;
                 const rx = ox - (FR_SPEC.L / 2) * scale;
                 const ry = oy + (zOffset - FR_SPEC.W / 2) * scale;
                 ctx2.fillStyle = '#1e40af'; ctx2.fillRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
@@ -4281,6 +4335,7 @@
 
         function setOrient(o) {
             state.orient = o; state.frManualCount = null;
+            state.hiddenFRs = []; // Reset on orientation change
             document.getElementById('bAlong').classList.toggle('active', o === 'along');
             document.getElementById('bAthw').classList.toggle('active', o === 'athwart');
             uiUpdate();
@@ -4290,7 +4345,20 @@
             const L = getLayout();
             const base = state.frManualCount !== null ? state.frManualCount : L.frCount;
             state.frManualCount = Math.max(1, base + d);
+            state.hiddenFRs = []; // Reset on count change for simplicity
             uiUpdate();
+        }
+
+        function toggleFREditMode() {
+            state.isFREditMode = !state.isFREditMode;
+            const btn = document.getElementById('btn-fr-edit');
+            if (state.isFREditMode) {
+                btn.classList.add('active');
+                btn.innerText = 'ON';
+            } else {
+                btn.classList.remove('active');
+                btn.innerText = 'OFF';
+            }
         }
 
         function resetCamera() {
