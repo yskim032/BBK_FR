@@ -1384,9 +1384,16 @@
                         style="font-size:13px; color:var(--accent); text-align:right; margin-bottom:12px; padding-right:5px; font-weight:600;">
                         350MT=65m, 1200MT=95m
                     </div>
-                    <div class="fc-input-row">
+                    <div class="fc-input-row" style="margin-bottom:6px;">
                         <label>Boom Angle (deg)</label>
-                        <input type="number" id="fc-boom-angle" value="45" step="1" oninput="updateFC()">
+                        <div style="display:flex; align-items:center; gap:2px; width: 60%;">
+                            <button onclick="changeFCAngle(-1)"
+                                style="flex:0 0 32px;height:30px;border-radius:4px 0 0 4px;border:1px solid var(--border);border-right:none;background:var(--panel);color:#fff;cursor:pointer;font-weight:bold;font-size:14px;">▼</button>
+                            <input type="number" id="fc-boom-angle" value="45" step="1" oninput="updateFC()"
+                                style="width:100%; border-radius:0;">
+                            <button onclick="changeFCAngle(1)"
+                                style="flex:0 0 32px;height:30px;border-radius:0 4px 4px 0;border:1px solid var(--border);border-left:none;background:var(--panel);color:#fff;cursor:pointer;font-weight:bold;font-size:14px;">▲</button>
+                        </div>
                     </div>
                     <div class="fc-input-row">
                         <label>Lifting Length (m)</label>
@@ -3963,6 +3970,16 @@
             drawFC();
         };
 
+        window.changeFCAngle = function (delta) {
+            const input = document.getElementById('fc-boom-angle');
+            if (input) {
+                let newVal = parseFloat(input.value) + delta;
+                newVal = Math.max(10, Math.min(85, newVal));
+                input.value = newVal;
+                updateFC();
+            }
+        };
+
         window.toggleFCHighlight = function (mode) {
             if (fcState.highlightMode === mode) {
                 fcState.highlightMode = null;
@@ -4002,7 +4019,7 @@
             const vSubmerged = 15 * scale;
             const vFullH = (fcState.vesselFB * scale) + vSubmerged;
             const vX = ox;
-            const vY = oy - fcState.vesselFB * scale;
+            const vY = oy - fcState.vesselFB * scale; // Hatch cover level
 
             ctxFC.fillStyle = '#1e293b';
             ctxFC.fillRect(vX - vesselW, vY, vesselW, vFullH);
@@ -4010,11 +4027,53 @@
             ctxFC.lineWidth = 1;
             ctxFC.strokeRect(vX - vesselW, vY, vesselW, vFullH);
 
-            ctxFC.fillStyle = '#fff';
-            ctxFC.font = 'bold 15px Outfit';
+            // Hatch Cover Line
+            ctxFC.fillStyle = '#000000';
+            ctxFC.fillRect(vX - vesselW, vY, vesselW, 4);
+
+            // Under deck grid
+            const rowWidth = 2.44;
+            const rowW_px = rowWidth * scale;
+            const cellH_px = 2.9 * scale;
+
+            // Hull logic
+            const hullColor = '#334155'; // Dark slate grey
+            // Left Hull
+            ctxFC.fillStyle = hullColor;
+            ctxFC.fillRect(vX - vesselW, vY + 4, rowW_px, vFullH - 4);
+            // Right Hull
+            ctxFC.fillRect(vX - rowW_px, vY + 4, rowW_px, vFullH - 4);
+            // Bottom Hull
+            ctxFC.fillRect(vX - vesselW, vY + vFullH - cellH_px, vesselW, cellH_px);
+
+            const innerLeftX = vX - vesselW + rowW_px;
+            const innerRightX = vX - rowW_px;
+            const innerBtmY = vY + vFullH - cellH_px;
+
+            ctxFC.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctxFC.lineWidth = 1;
+
+            const numTiers = Math.floor(vFullH / cellH_px);
+            for (let t = 1; t < numTiers; t++) {
+                let y = vY + t * cellH_px;
+                if (y >= innerBtmY) break;
+                ctxFC.beginPath(); ctxFC.moveTo(innerLeftX, y); ctxFC.lineTo(innerRightX, y); ctxFC.stroke();
+            }
+
+            const numRows = Math.floor(vesselW / rowW_px);
+            for (let r = 2; r < numRows; r++) {
+                let x = vX - r * rowW_px;
+                if (x <= innerLeftX) break;
+                ctxFC.beginPath(); ctxFC.moveTo(x, vY); ctxFC.lineTo(x, innerBtmY); ctxFC.stroke();
+            }
+
+            ctxFC.fillStyle = 'rgba(255,255,255,0.1)';
+            const udFontSize = Math.max(10, Math.floor(20 * (scale / 5)));
+            ctxFC.font = `bold ${udFontSize}px Outfit`;
             ctxFC.textAlign = 'center';
             ctxFC.textBaseline = 'middle';
-            ctxFC.fillText('VESSEL', vX - vesselW / 2, vY + vFullH / 2);
+            ctxFC.fillText('UNDER DECK', vX - vesselW / 2, vY + vFullH / 2);
+            ctxFC.textBaseline = 'alphabetic'; // Reset baseline
 
             // Crane Barge
             const craneW = 35 * scale;
@@ -4031,6 +4090,8 @@
             ctxFC.fillStyle = '#fff';
             ctxFC.textAlign = 'center';
             ctxFC.textBaseline = 'middle';
+            const fcFontSize = Math.max(8, Math.floor(14 * (scale / 5)));
+            ctxFC.font = `bold ${fcFontSize}px Outfit`;
             ctxFC.fillText('F/C', cX + craneW / 2, cY + cFullH / 2);
             ctxFC.textBaseline = 'alphabetic'; // Reset baseline
 
@@ -4101,29 +4162,110 @@
 
 
             // Labels from drawing
-            ctxFC.fillStyle = '#fff';
-            ctxFC.font = 'bold 13px Outfit';
-            ctxFC.textAlign = 'right';
-            ctxFC.fillText('Headroom', tipX - 15, (tipY + liftEndY) / 2);
-            ctxFC.fillStyle = '#60a5fa';
-            ctxFC.font = 'bold 12px JetBrains Mono';
-            ctxFC.fillText(fcState.liftLen.toFixed(1) + 'm', tipX - 15, (tipY + liftEndY) / 2 + 15);
-
             ctxFC.textAlign = 'left';
-            ctxFC.fillText('F/C Boom (' + fcState.boomLen.toFixed(1) + 'm)', (pivotX + tipX) / 2 + 20, (pivotY + tipY) / 2);
-
-            // Removed redundant Freeboard label
-
-            ctxFC.textAlign = 'center';
-            ctxFC.fillStyle = '#fff';
-            ctxFC.fillText('Distance Vessel and F/C', (vX + cX) / 2, oy + 45);
+            // Dimension line: Headroom — left side of red lifting line, text right-aligned
+            const hrX = liftEndX - 15; // 15px left of the red line
+            const hrMidY = (tipY + liftEndY) / 2;
+            ctxFC.save();
+            ctxFC.setLineDash([3, 3]);
+            ctxFC.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctxFC.lineWidth = 1;
+            ctxFC.beginPath(); ctxFC.moveTo(hrX, tipY); ctxFC.lineTo(hrX, liftEndY); ctxFC.stroke();
+            // Horizontal tick marks
+            ctxFC.beginPath(); ctxFC.moveTo(hrX - 5, tipY); ctxFC.lineTo(hrX + 5, tipY); ctxFC.stroke();
+            ctxFC.beginPath(); ctxFC.moveTo(hrX - 5, liftEndY); ctxFC.lineTo(hrX + 5, liftEndY); ctxFC.stroke();
+            ctxFC.setLineDash([]);
             ctxFC.fillStyle = '#60a5fa';
-            ctxFC.font = 'bold 14px JetBrains Mono';
-            ctxFC.fillText(fcState.dist.toFixed(1) + 'm', (vX + cX) / 2, oy + 65);
+            ctxFC.textAlign = 'right';
+            ctxFC.font = 'bold 11px JetBrains Mono';
+            ctxFC.fillText(fcState.liftLen.toFixed(1) + 'm', hrX - 8, hrMidY - 2);
+            ctxFC.fillStyle = 'rgba(148, 163, 184, 0.8)';
+            ctxFC.fillText('Headroom', hrX - 8, hrMidY + 11);
+            ctxFC.restore();
+
+            // F/C Boom — draw label offset to the right side of the boom (perpendicular)
+            {
+                const bDx = tipX - pivotX, bDy = tipY - pivotY;
+                const bLen = Math.sqrt(bDx * bDx + bDy * bDy) || 1;
+                // Right-normal (clockwise 90°): (bDy, -bDx) / len — negate to get lower-right side
+                const nX = -bDy / bLen, nY = bDx / bLen;
+                const offset = 15; // px for the dim line
+                const textOffset = 45; // further right for the text
+                const textMidX = (pivotX + tipX) / 2 + nX * textOffset;
+                const textMidY = (pivotY + tipY) / 2 + nY * textOffset;
+
+                // Parallel dim line
+                ctxFC.save();
+                ctxFC.font = '11px JetBrains Mono';
+                ctxFC.setLineDash([3, 3]);
+                ctxFC.strokeStyle = 'rgba(255,255,255,0.4)';
+                ctxFC.lineWidth = 1;
+                ctxFC.beginPath();
+                ctxFC.moveTo(pivotX + nX * offset, pivotY + nY * offset);
+                ctxFC.lineTo(tipX + nX * offset, tipY + nY * offset);
+                ctxFC.stroke();
+                ctxFC.setLineDash([]);
+                ctxFC.fillStyle = '#60a5fa';
+                ctxFC.textAlign = 'center'; ctxFC.textBaseline = 'middle';
+                ctxFC.fillText(fcState.boomLen.toFixed(1) + 'm', textMidX, textMidY - 6);
+                ctxFC.fillStyle = 'rgba(148, 163, 184, 0.7)';
+                ctxFC.fillText('F/C Boom', textMidX, textMidY + 6);
+                ctxFC.textBaseline = 'alphabetic';
+                ctxFC.restore();
+            }
+
+            // Distance Vessel ↔ F/C — horizontal dim line just below waterline
+            ctxFC.font = '11px JetBrains Mono';
+            drawFCDim(vX, oy + 35, cX, oy + 35, fcState.dist.toFixed(1) + 'm', 'Dist V↔F/C', false);
 
             // BBK
             const bbkW = fcState.bbkL * scale;
             const bbkH = fcState.bbkH * scale;
+
+            // ---- Under deck BBK highlight logic ----
+            const reachM = (vX - tipX) / scale;
+            if (reachM > 0) {
+                const liftPxX = tipX;
+                // Color the space BBK occupies based on its length
+                const bbkStartM = reachM - (fcState.bbkL / 2);
+                const bbkEndM = reachM + (fcState.bbkL / 2);
+
+                const hlX1 = vX - (bbkEndM * scale);
+                const hlX2 = vX - (Math.max(0, bbkStartM) * scale);
+
+                const hlY = vY + 4; // Just below hatch cover
+                const hlH = fcState.bbkH * scale; // Use BBK height
+
+                const cx1 = Math.max(innerLeftX, hlX1);
+                const cx2 = Math.min(innerRightX, hlX2);
+
+                if (cx2 > cx1 && hlY < innerBtmY) {
+                    const clampH = Math.min(hlH, innerBtmY - hlY);
+                    ctxFC.fillStyle = 'rgba(239, 68, 68, 0.4)'; // Red area
+                    ctxFC.fillRect(cx1, hlY, cx2 - cx1, clampH);
+                    ctxFC.strokeStyle = '#ef4444';
+                    ctxFC.strokeRect(cx1, hlY, cx2 - cx1, clampH);
+                }
+
+                // Lift row highlight and arrow
+                if (liftPxX < innerRightX && liftPxX > innerLeftX) {
+                    const rowIdx = Math.floor((innerRightX - liftPxX) / rowW_px);
+                    const rowColX = innerRightX - (rowIdx + 1) * rowW_px;
+                    if (rowIdx >= 0) {
+                        ctxFC.fillStyle = 'rgba(251, 191, 36, 0.15)'; // faint yellow
+                        ctxFC.fillRect(rowColX, vY, rowW_px, innerBtmY - vY);
+                    }
+
+                    ctxFC.fillStyle = '#fbbf24'; // yellow arrow
+                    ctxFC.beginPath();
+                    ctxFC.moveTo(liftPxX - 6, vY - 14);
+                    ctxFC.lineTo(liftPxX + 6, vY - 14);
+                    ctxFC.lineTo(liftPxX, vY - 2);
+                    ctxFC.fill();
+                }
+            }
+            // ----------------------------------------
+
             ctxFC.fillStyle = '#ef4444';
             ctxFC.fillRect(liftEndX - bbkW / 2, liftEndY, bbkW, bbkH);
 
@@ -4133,9 +4275,8 @@
             ctxFC.font = 'bold 11px Outfit';
             ctxFC.fillText('BBK', liftEndX, liftEndY + bbkH / 2 + 4);
 
-            const reachM = (vX - tipX) / scale;
-            const rowWidth = 2.44;
-            const rows = reachM <= 0 ? 0 : Math.ceil(reachM / rowWidth);
+            const innerReachM = reachM - rowWidth;
+            const rows = innerReachM <= 0 ? 0 : Math.ceil(innerReachM / rowWidth);
             const reachText = reachM.toFixed(2) + 'm (' + rows + ' rows)';
 
             ctxFC.fillStyle = '#60a5fa';
@@ -4147,6 +4288,37 @@
             ctxFC.fillText('Reach', liftEndX, liftEndY + bbkH + 22);
 
             document.getElementById('fc-res-reach').textContent = reachText;
+
+            // BBK to Boom clearance
+            const bx = liftEndX + bbkW / 2;
+            const by = liftEndY;
+            const cxVec = bx - pivotX, cyVec = by - pivotY;
+            const bDx = tipX - pivotX, bDy = tipY - pivotY;
+            const bLen = Math.sqrt(bDx * bDx + bDy * bDy) || 1;
+            const nX = -bDy / bLen, nY = bDx / bLen;
+            const distPx = cxVec * nX + cyVec * nY;
+            const projX = bx - distPx * nX, projY = by - distPx * nY;
+            const clrM = Math.abs(distPx) / scale;
+
+            // Draw line from BBK top-right to Boom
+            ctxFC.save();
+            ctxFC.setLineDash([3, 3]);
+            ctxFC.strokeStyle = '#38bdf8'; // Light blue for clearance
+            ctxFC.lineWidth = 1;
+            ctxFC.beginPath();
+            ctxFC.moveTo(bx, by);
+            ctxFC.lineTo(projX, projY);
+            ctxFC.stroke();
+            ctxFC.setLineDash([]);
+
+            // Draw label
+            const midClrX = (bx + projX) / 2;
+            const midClrY = (by + projY) / 2;
+            ctxFC.fillStyle = '#38bdf8';
+            ctxFC.font = 'bold 11px JetBrains Mono';
+            ctxFC.textAlign = 'right'; ctxFC.textBaseline = 'bottom';
+            ctxFC.fillText(clrM.toFixed(1) + 'm', midClrX - 4, midClrY - 4);
+            ctxFC.restore();
 
             // Update bottom stats (Fixing the 0 values issue)
             const axialRes = fcState.bbkWt / Math.sin(angleRad);
@@ -4208,12 +4380,13 @@
             // Dimensions (Small labels next to lines)
             ctxFC.font = '11px JetBrains Mono';
             drawFCDim(vX, vY, vX, oy, fcState.vesselFB.toFixed(1) + 'm', 'Freeboard', true);
+            // Draft: waterline to keel
+            const draftM = vSubmerged / scale;
+            drawFCDim(vX, oy, vX, vY + vFullH, draftM.toFixed(1) + 'm', 'Draft', true);
             // Reach dimension line (Dashed only, no duplicate text)
             drawFCDim(vX, vY - 20, tipX, vY - 20, '', '', false);
-            ctxFC.setLineDash([3, 3]);
-            ctxFC.strokeStyle = 'rgba(255,255,255,0.2)';
-            ctxFC.beginPath(); ctxFC.moveTo(vX, oy + 60); ctxFC.lineTo(cX, oy + 60); ctxFC.stroke();
             ctxFC.setLineDash([]);
+            // (Distance dim line drawn above near BBK section)
 
             // Vessel Width dimension at the bottom
             drawFCDim(vX - vesselW, oy + 20, vX, oy + 20, '45.0m', 'Vessel Beam', false);
@@ -4258,6 +4431,9 @@
                 const mx = e.clientX - rect.left;
                 const my = e.clientY - rect.top;
 
+                fcState.lastMouseX = mx;
+                fcState.lastMouseY = my;
+
                 for (const p of fcState.parts) {
                     if (p.id === 'boom-tip') {
                         const d = Math.sqrt((mx - p.x) ** 2 + (my - p.y) ** 2);
@@ -4284,37 +4460,40 @@
                 const rect = cvFC.getBoundingClientRect();
                 const mx = e.clientX - rect.left;
                 const my = e.clientY - rect.top;
-                const scale = 5;
+
+                const dx = mx - fcState.lastMouseX;
+                const dy = my - fcState.lastMouseY;
+                fcState.lastMouseX = mx;
+                fcState.lastMouseY = my;
+
+                const scale = fcState.zoom;
                 const ox = rect.width * 0.3;
                 const oy = rect.height * 0.7;
 
                 if (fcState.dragPart === 'vessel') {
-                    const newFB = Math.max(0, (oy - my) / scale);
+                    const currentFB = parseFloat(document.getElementById('fc-vessel-fb').value) || 0;
+                    const newFB = Math.max(0, currentFB - dy / scale);
                     document.getElementById('fc-vessel-fb').value = newFB.toFixed(1);
                 } else if (fcState.dragPart === 'crane') {
-                    const newDist = (mx - ox) / scale;
+                    const currentDist = parseFloat(document.getElementById('fc-dist').value) || 0;
+                    const newDist = Math.max(0, currentDist + dx / scale);
                     document.getElementById('fc-dist').value = newDist.toFixed(1);
                 } else if (fcState.dragPart === 'boom-tip' || fcState.dragPart === 'boom-body') {
                     const cX = ox + fcState.dist * scale, cY = oy - fcState.craneFB * scale;
                     const craneW = 35 * scale;
                     const pivotX = cX + craneW / 2, pivotY = cY;
-                    const dx = pivotX - mx, dy = pivotY - my;
-                    const newAngle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    const vecX = pivotX - mx, vecY = pivotY - my;
+                    const newAngle = Math.atan2(vecY, vecX) * 180 / Math.PI;
                     const isLocked = document.getElementById('fc-boom-lock').checked;
 
                     if (fcState.dragPart === 'boom-tip' && !isLocked) {
-                        const newLen = Math.sqrt(dx * dx + dy * dy) / scale;
+                        const newLen = Math.sqrt(vecX * vecX + vecY * vecY) / scale;
                         document.getElementById('fc-boom-len').value = newLen.toFixed(1);
                     }
                     document.getElementById('fc-boom-angle').value = Math.max(10, Math.min(85, Math.round(newAngle)));
                 } else if (fcState.dragPart === 'bbk') {
-                    const cX = ox + fcState.dist * scale, cY = oy - fcState.craneFB * scale;
-                    const craneW = 35 * scale;
-                    const pivotX = cX + craneW / 2, pivotY = cY;
-                    const angleRad = (fcState.boomAngle * Math.PI) / 180;
-                    const tipY = pivotY - fcState.boomLen * Math.sin(angleRad) * scale;
-
-                    const newLiftLen = Math.max(1, (my - tipY) / scale);
+                    const currentLiftLen = parseFloat(document.getElementById('fc-lift-len').value) || 0;
+                    const newLiftLen = Math.max(1, currentLiftLen + dy / scale);
                     document.getElementById('fc-lift-len').value = newLiftLen.toFixed(1);
                 }
                 updateFC();
