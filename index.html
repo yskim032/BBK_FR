@@ -99,9 +99,9 @@
         }
 
         .program-main-text {
-            font-size: 15px;
+            font-size: 24px;
             font-weight: 850;
-            letter-spacing: -0.2px;
+            letter-spacing: -0.5px;
             background: linear-gradient(to right, #ffffff, var(--accent2));
             -webkit-background-clip: text;
             background-clip: text;
@@ -1049,10 +1049,8 @@
 
     <header>
         <div class="logo-box">
-            <img src="logo.png" alt="G.GAIN SOLUTION" class="logo-img">
-            <div class="logo-divider"></div>
             <div class="program-title-box">
-                <span class="program-main-text">Break Bulk<br>Planner</span>
+                <span class="program-main-text">Break Bulk Planner</span>
             </div>
         </div>
         <div class="spacer"></div>
@@ -1133,6 +1131,13 @@
                         WOODEN TIMBER (20cm)</label>
                     <button class="btn-choice" id="btn-timber" style="padding: 4px 12px; font-size: 11px; width: auto;"
                         onclick="toggleTimber()">OFF</button>
+                </div>
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">🔄
+                        ROTATE CARGO MODE</label>
+                    <button class="btn-choice" id="btn-rotate" style="padding: 4px 12px; font-size: 11px; width: auto;"
+                        onclick="toggleRotateMode()">OFF</button>
                 </div>
                 <div id="warn" class="warn-box">⚠ CARGO EXCEEDS ARRANGEMENT</div>
 
@@ -1491,7 +1496,35 @@
                             id="s-orient">?</span></div>
                     <div class="data-row"><span class="data-lbl">Units Required</span><span class="data-val"
                             id="s-fr">?</span></div>
-                    <div class="data-row" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border)">
+                    <div class="data-row"
+                        style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border); flex-direction:column; gap:6px;">
+                        <span
+                            style="font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1px;">MAX
+                            TOTAL HEIGHT</span>
+                        <div
+                            style="display:flex; flex-direction:column; gap:3px; background:rgba(0,0,0,0.3); padding:8px; border-radius:8px; border:1px solid rgba(59,130,246,0.25);">
+                            <div style="display:flex; justify-content:space-between; font-size:12px;">
+                                <span style="color:var(--muted);">BBK Cargo H</span>
+                                <span style="color:#60a5fa; font-family:'JetBrains Mono';" id="s-bbk-h">?</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:12px;">
+                                <span style="color:var(--muted);">40FR Bed (fixed)</span>
+                                <span style="color:#fbbf24; font-family:'JetBrains Mono';">+ 0.70 m</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:12px;" id="s-timber-row">
+                                <span style="color:var(--muted);">Wooden Timber</span>
+                                <span style="color:#92400e; font-family:'JetBrains Mono';" id="s-timber-h">+ 0.00
+                                    m</span>
+                            </div>
+                            <div
+                                style="display:flex; justify-content:space-between; font-size:14px; font-weight:800; margin-top:4px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.15);">
+                                <span style="color:#fff;">= TOTAL</span>
+                                <span style="color:#10b981; font-family:'JetBrains Mono'; font-size:16px;"
+                                    id="s-total-h">?</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="data-row" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border)">
                         <span class="data-lbl" style="color:var(--red); font-weight:700">TOTAL SLOT KILL</span>
                         <span class="data-val" id="s-kill" style="color:var(--red); font-size:16px">?</span>
                     </div>
@@ -1628,6 +1661,7 @@
 
     <script>
         /* ──────── STATE & PERSISTENCE ──────── */
+        const FR_BED_H = 0.70; // 40FR Bed Unit thickness (70cm) - fixed physical constant
         let FR_SPEC = { L: 12.192, W: 2.438, H: 1.97, PL: 45.0 };
         let state = {
             view: '3d', orient: 'along', frManualCount: null, shape: 'box',
@@ -1635,7 +1669,7 @@
             tVLashCount: 2, lVLashCount: 2, showLifting: false,
             skColor: '#ef4444', skOpacity: 0.12, skEffect: 'none',
             lashType: 'strap', lashMSL: 100, zoom2D: 1.0, showWarningLash: true, showVLashing: true,
-            isFREditMode: false, hiddenFRs: []
+            isFREditMode: false, hiddenFRs: [], isRotateMode: false
         };
 
         const LASH_MSL_MAP = {
@@ -1808,6 +1842,11 @@
                 bT.textContent = state.isTimber ? "ON" : "OFF";
                 bT.classList.toggle('active', state.isTimber);
             }
+            const bR = document.getElementById('btn-rotate');
+            if (bR) {
+                bR.textContent = state.isRotateMode ? "ON" : "OFF";
+                bR.classList.toggle('active', state.isRotateMode);
+            }
         }
 
         /* ──────── THREE.JS CORE ──────── */
@@ -1879,10 +1918,25 @@
 
             const intersects = raycaster.intersectObjects(intersectables);
             if (intersects.length > 0) {
+                const clickedGrp = intersects[0].object.userData.parentGrp;
+                const idx = clickedGrp.userData.idx;
+
+                if (state.isRotateMode) {
+                    const c = cargosData[idx];
+                    if (c) {
+                        const temp = c.L;
+                        c.L = c.W;
+                        c.W = temp;
+                        saveSystem();
+                        uiUpdate();
+                    }
+                    return;
+                }
+
                 controls.enabled = false;
-                dragObj = intersects[0].object.userData.parentGrp; // Extract the group
+                dragObj = clickedGrp; // Extract the group
                 isDragging = true;
-                dragObjIdx = dragObj.userData.idx;
+                dragObjIdx = idx;
 
                 dragPlane.set(new THREE.Vector3(0, 1, 0), -dragObj.position.y);
                 raycaster.ray.intersectPlane(dragPlane, dragOffset);
@@ -2205,6 +2259,17 @@
             document.getElementById('s-fr').textContent = `${LInfo.frCount} Units`;
             document.getElementById('s-kill').textContent = `${LInfo.totalTEU} TEU`;
 
+            // Max Total Height display
+            const timberH_ui = state.isTimber ? 0.2 : 0.0;
+            const bbkH_ui = LInfo.bbkArrH;
+            const totalMaxH = bbkH_ui + FR_BED_H + timberH_ui;
+            const sBbkH = document.getElementById('s-bbk-h');
+            const sTimberH = document.getElementById('s-timber-h');
+            const sTotalH = document.getElementById('s-total-h');
+            if (sBbkH) sBbkH.textContent = `${bbkH_ui.toFixed(2)} m`;
+            if (sTimberH) sTimberH.textContent = timberH_ui > 0 ? `+ ${timberH_ui.toFixed(2)} m` : `+ 0.00 m`;
+            if (sTotalH) sTotalH.textContent = `${totalMaxH.toFixed(2)} m`;
+
             const lStats = document.getElementById('lashing-stats');
             const lTable = document.getElementById('lashing-table-overlay');
             if (lStats) lStats.style.display = state.showLashing ? 'block' : 'none';
@@ -2467,7 +2532,7 @@
             const R = getLashingReport(L);
             const timberH = state.isTimber ? 0.2 : 0.0;
             const width = 0.1;
-            const DECK_H = 0.25;
+            const DECK_H = FR_BED_H; // 40FR Bed Unit: 0.70m
             const CARGO_BTM_Y = DECK_H + timberH;
             const topY_red = CARGO_BTM_Y + L.bbkArrH + 0.01;
             const topY_blue = CARGO_BTM_Y + L.bbkArrH + 0.02;
@@ -2661,7 +2726,7 @@
                 };
 
                 if (warnLvl === 1 || warnLvl === true) {
-                    const DECK_H = 0.25;
+                    const DECK_H = FR_BED_H; // 40FR Bed 0.70m
                     const warnLen = Math.min(0.8, dist * 0.4); // length for the warn part near FR
                     const p1Touches = Math.abs(p1.y - DECK_H) < 0.1;
                     const p2Touches = Math.abs(p2.y - DECK_H) < 0.1;
@@ -2691,7 +2756,7 @@
             while (grp.children.length) grp.remove(grp.children[0]);
             syncToggles();
             const timberH = state.isTimber ? 0.2 : 0.0;
-            const BASE_H = 0.25;
+            const BASE_H = FR_BED_H; // 40FR Bed Unit: 0.70m
 
             // Base FRs
             for (let i = 0; i < L.frCount; i++) {
@@ -2700,30 +2765,44 @@
 
                 const z = relZ * FR_SPEC.W;
 
-                // Top FR (Blue)
+                // 40FR Bed Unit (Red) - 0.70m thick
                 const geo = new THREE.BoxGeometry(FR_SPEC.L, BASE_H, FR_SPEC.W);
-                const mat = new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.5, metalness: 0.3 });
+                const mat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.4, metalness: 0.4 });
                 const mesh = new THREE.Mesh(geo, mat);
                 mesh.position.set(0, BASE_H / 2, z);
                 mesh.receiveShadow = true;
                 grp.add(mesh);
-                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x3b82f6 }));
+                // FR bed edge lines (bright red)
+                const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xef4444 }));
                 edges.position.copy(mesh.position);
                 grp.add(edges);
 
-                // Sandwich FR (Green)
+                // Sandwich FR (Light Green / 연두색)
                 if (state.isSandwich) {
-                    const sMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.5, metalness: 0.2 });
+                    const sMat = new THREE.MeshStandardMaterial({ color: 0x65a30d, roughness: 0.5, metalness: 0.3 });
                     const sMesh = new THREE.Mesh(geo, sMat);
                     sMesh.position.set(0, -BASE_H / 2, z);
                     grp.add(sMesh);
+                    // Add outline for sandwich FR (bright lime)
+                    const sEdges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xa3e635 }));
+                    sEdges.position.copy(sMesh.position);
+                    grp.add(sEdges);
+
+                    // H: 0.70m label on Sandwich FR side faces — complementary of green = Magenta/Pink
+                    addLabel("H: 0.70m", new THREE.Vector3(0, -BASE_H / 2, z + FR_SPEC.W / 2 + 0.01), '#e11d48', 0.35, true, new THREE.Euler(0, 0, 0));
+                    addLabel("H: 0.70m", new THREE.Vector3(0, -BASE_H / 2, z - FR_SPEC.W / 2 - 0.01), '#e11d48', 0.35, true, new THREE.Euler(0, Math.PI, 0));
                 }
-                // Properly rotated to view horizontally from +X
+
+                // 40FR number labels
                 const rotH = new THREE.Euler(-Math.PI / 2, 0, Math.PI / 2);
                 const labelPosLeft = new THREE.Vector3(-(FR_SPEC.L / 2 + 0.8), BASE_H + 0.02 + i * 0.001, z);
-                addLabel(`40FR #${L.frCount - i}`, labelPosLeft, '#ffffff', 0.8, true, rotH);
+                addLabel(`40FR #${L.frCount - i}`, labelPosLeft, '#ffffff', 0.56, true, rotH);
                 const labelPosRight = new THREE.Vector3(FR_SPEC.L / 2 + 0.8, BASE_H + 0.02 + i * 0.001, z);
-                addLabel(`40FR #${L.frCount - i}`, labelPosRight, '#ffffff', 0.8, true, rotH);
+                addLabel(`40FR #${L.frCount - i}`, labelPosRight, '#ffffff', 0.56, true, rotH);
+
+                // H: 0.70m label on top FR side faces — complementary of red = Cyan
+                addLabel("H: 0.70m", new THREE.Vector3(0, BASE_H / 2, z + FR_SPEC.W / 2 + 0.01), '#06b6d4', 0.35, true, new THREE.Euler(0, 0, 0));
+                addLabel("H: 0.70m", new THREE.Vector3(0, BASE_H / 2, z - FR_SPEC.W / 2 - 0.01), '#06b6d4', 0.35, true, new THREE.Euler(0, Math.PI, 0));
             }
 
             // Slot Kills
@@ -2999,7 +3078,7 @@
 
         function drawLiftingSimulation(L) {
             const spreaderY = L.bbkArrH + 4.0;
-            const BASE_H = 0.25;
+            const BASE_H = FR_BED_H; // 40FR Bed Unit: 0.70m
 
             const tareWt = L.frCount * 5.0; // Standard 40FR tare approx 5t
             const grossWt = L.totalWt + tareWt;
@@ -3398,6 +3477,15 @@
                 }
 
                 if (hit) {
+                    if (state.isRotateMode) {
+                        const temp = c.L;
+                        c.L = c.W;
+                        c.W = temp;
+                        saveSystem();
+                        uiUpdate();
+                        return;
+                    }
+
                     cv2.style.cursor = 'grabbing';
                     dragObj2DIdx = i;
                     isDragging2D = true;
@@ -3564,7 +3652,7 @@
                 ctx2.strokeStyle = '#ef4444'; ctx2.lineWidth = 1.5; ctx2.strokeRect(rx, ry, FR_SPEC.L * scale, FR_SPEC.W * scale);
                 if (s.x === 0 && s.y === 0) {
                     ctx2.fillStyle = '#ffffff';
-                    ctx2.font = 'bold 15px Outfit'; ctx2.textBaseline = 'middle';
+                    ctx2.font = 'bold 10px Outfit'; ctx2.textBaseline = 'middle';
 
                     // Top label (visually)
                     ctx2.save();
@@ -4534,10 +4622,40 @@
             if (state.isFREditMode) {
                 btn.classList.add('active');
                 btn.innerText = 'ON';
+                // Mutually exclusive: turn off rotate mode
+                state.isRotateMode = false;
+                const btnRot = document.getElementById('btn-rotate');
+                if (btnRot) {
+                    btnRot.classList.remove('active');
+                    btnRot.innerText = 'OFF';
+                }
             } else {
                 btn.classList.remove('active');
                 btn.innerText = 'OFF';
             }
+            saveSystem();
+            uiUpdate();
+        }
+
+        function toggleRotateMode() {
+            state.isRotateMode = !state.isRotateMode;
+            const btn = document.getElementById('btn-rotate');
+            if (state.isRotateMode) {
+                btn.classList.add('active');
+                btn.innerText = 'ON';
+                // Mutually exclusive: turn off FR Edit mode
+                state.isFREditMode = false;
+                const btnFR = document.getElementById('btn-fr-edit');
+                if (btnFR) {
+                    btnFR.classList.remove('active');
+                    btnFR.innerText = 'OFF';
+                }
+            } else {
+                btn.classList.remove('active');
+                btn.innerText = 'OFF';
+            }
+            saveSystem();
+            uiUpdate();
         }
 
         function resetCamera() {
