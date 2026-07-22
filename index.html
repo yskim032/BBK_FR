@@ -1111,13 +1111,6 @@
                     <!-- JS fills this -->
                 </div>
 
-                <div
-                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-                    <label style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">🧲
-                        SNAP ALIGNMENT</label>
-                    <button class="btn-choice active" id="btn-snap"
-                        style="padding: 4px 12px; font-size: 11px; width: auto;" onclick="toggleSnap()">ON</button>
-                </div>
                 <div class="grid-inputs" style="grid-template-columns: 1fr 1fr; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
                     <div class="input-field">
                         <label style="font-size: 11px; font-weight: 700; color: var(--accent2); letter-spacing: 0.5px;">📐 40FR BED (m)</label>
@@ -1127,6 +1120,13 @@
                         <label style="font-size: 11px; font-weight: 700; color: var(--accent2); letter-spacing: 0.5px;">📦 SLOT H (m)</label>
                         <input type="number" id="slotH" step="0.01" value="2.89" oninput="uiUpdate()" style="margin-top:4px;" />
                     </div>
+                </div>
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <label style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">🧲
+                        SNAP ALIGNMENT</label>
+                    <button class="btn-choice active" id="btn-snap"
+                        style="padding: 4px 12px; font-size: 11px; width: auto;" onclick="toggleSnap()">ON</button>
                 </div>
                 <div
                     style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
