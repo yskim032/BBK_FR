@@ -3732,20 +3732,28 @@
                 else { ctx2.strokeRect(bx, by, bw, bh); }
 
                 const isVisuallyHorizontal = bh > bw;
-                const textSpanLimit = Math.max(bw, bh);
-                const fontSize = Math.min(14, textSpanLimit / 10);
+                const boxHeight = isVisuallyHorizontal ? bw : bh;
+                const boxLength = isVisuallyHorizontal ? bh : bw;
+                let fontSize = Math.max(10, Math.round(boxHeight * 0.30));
 
-                if (bw > 20 && bh > 20) {
+                if (bw > 15 && bh > 15) {
                     ctx2.save();
                     ctx2.translate(ox + c.x * scale, oy + c.z * scale);
                     ctx2.rotate(isVisuallyHorizontal ? -Math.PI / 2 : 0);
 
                     ctx2.font = `bold ${fontSize}px Outfit, sans-serif`;
+                    const txt = `[${idx + 1}] ${c.L}x${c.W}x${c.H}m ${c.wt}t`;
+                    const txtWidth = ctx2.measureText(txt).width;
+                    if (txtWidth > boxLength * 0.88) {
+                        fontSize = Math.max(9, Math.floor(fontSize * ((boxLength * 0.88) / txtWidth)));
+                        ctx2.font = `bold ${fontSize}px Outfit, sans-serif`;
+                    }
+
                     ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
                     ctx2.shadowColor = 'rgba(0,0,0,0.9)'; ctx2.shadowBlur = 4;
-                    const txt = `[${idx + 1}] ${c.L}x${c.W}x${c.H}m ${c.wt}t`;
 
-                    ctx2.strokeStyle = 'rgba(0,0,0,0.9)'; ctx2.lineWidth = 3;
+                    const strokeW = Math.max(2, Math.round(fontSize * 0.12));
+                    ctx2.strokeStyle = 'rgba(0,0,0,0.9)'; ctx2.lineWidth = strokeW;
                     ctx2.strokeText(txt, 0, 0);
                     ctx2.fillStyle = '#ffffff'; ctx2.fillText(txt, 0, 0);
 
