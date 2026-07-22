@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>G.GAIN SOLUTION | BBK Stowage Planner</title>
+    <title>MSC | BBK Stowage Planner</title>
     <meta name="description"
         content="Professional 3D/2D visualization for Break Bulk cargo on 40-foot flat rack containers" />
     <link
@@ -1118,6 +1118,16 @@
                     <button class="btn-choice active" id="btn-snap"
                         style="padding: 4px 12px; font-size: 11px; width: auto;" onclick="toggleSnap()">ON</button>
                 </div>
+                <div class="grid-inputs" style="grid-template-columns: 1fr 1fr; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div class="input-field">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--accent2); letter-spacing: 0.5px;">📐 40FR BED (m)</label>
+                        <input type="number" id="frBedH" step="0.01" value="0.7" oninput="uiUpdate()" style="margin-top:4px;" />
+                    </div>
+                    <div class="input-field">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--accent2); letter-spacing: 0.5px;">📦 SLOT H (m)</label>
+                        <input type="number" id="slotH" step="0.01" value="2.89" oninput="uiUpdate()" style="margin-top:4px;" />
+                    </div>
+                </div>
                 <div
                     style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
                     <label style="font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px;">🥪
@@ -1508,8 +1518,8 @@
                                 <span style="color:#60a5fa; font-family:'JetBrains Mono';" id="s-bbk-h">?</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; font-size:12px;">
-                                <span style="color:var(--muted);">40FR Bed (fixed)</span>
-                                <span style="color:#fbbf24; font-family:'JetBrains Mono';">+ 0.70 m</span>
+                                <span style="color:var(--muted);">40FR Bed</span>
+                                <span style="color:#fbbf24; font-family:'JetBrains Mono';" id="s-bed-h">+ 0.70 m</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; font-size:12px;" id="s-timber-row">
                                 <span style="color:var(--muted);">Wooden Timber</span>
@@ -1661,7 +1671,7 @@
 
     <script>
         /* ──────── STATE & PERSISTENCE ──────── */
-        const FR_BED_H = 0.70; // 40FR Bed Unit thickness (70cm) - fixed physical constant
+        let FR_BED_H = 0.70; // 40FR Bed Unit thickness (default 0.70m)
         let FR_SPEC = { L: 12.192, W: 2.438, H: 1.97, PL: 45.0 };
         let state = {
             view: '3d', orient: 'along', frManualCount: null, shape: 'box',
@@ -1669,7 +1679,8 @@
             tVLashCount: 2, lVLashCount: 2, showLifting: false,
             skColor: '#ef4444', skOpacity: 0.12, skEffect: 'none',
             lashType: 'strap', lashMSL: 100, zoom2D: 1.0, showWarningLash: true, showVLashing: true,
-            isFREditMode: false, hiddenFRs: [], isRotateMode: false
+            isFREditMode: false, hiddenFRs: [], isRotateMode: false,
+            frBedH: 0.70, slotH: 2.89
         };
 
         const LASH_MSL_MAP = {
@@ -1713,12 +1724,15 @@
         }
 
         loadSystem();
+        renderCargoRows();
 
         // Sync UI inputs with loaded state
         document.getElementById('frL').value = FR_SPEC.L;
         document.getElementById('frW').value = FR_SPEC.W;
         document.getElementById('frH').value = FR_SPEC.H;
         document.getElementById('frPL').value = FR_SPEC.PL || 45.0;
+        const elBedHInit = document.getElementById('frBedH'); if (elBedHInit) elBedHInit.value = state.frBedH !== undefined ? state.frBedH : 0.70;
+        const elSlotHInit = document.getElementById('slotH'); if (elSlotHInit) elSlotHInit.value = state.slotH !== undefined ? state.slotH : 2.89;
         document.getElementById('tLashCount').value = state.tLashCount;
         document.getElementById('lLashCount').value = state.lLashCount;
         document.getElementById('tVLashCount').value = state.tVLashCount;
@@ -2089,20 +2103,21 @@
 
         function renderCargoRows() {
             const cont = document.getElementById('cargo-list');
+            if (!cont) return;
             cont.innerHTML = '';
             cargosData.forEach((c, i) => {
                 const div = document.createElement('div');
                 div.className = 'cargo-row';
                 div.innerHTML = `
                     <div class="cargo-row-header">Cargo #${i + 1}</div>
-                    <div class="input-field"><label>L (m)</label><input type="number" step="0.1" value="${c.L}" onchange="updateRow(${i},'L',this.value)" /></div>
-                    <div class="input-field"><label>W (m)</label><input type="number" step="0.1" value="${c.W}" onchange="updateRow(${i},'W',this.value)" /></div>
-                    <div class="input-field"><label>H (m)</label><input type="number" step="0.1" value="${c.H}" onchange="updateRow(${i},'H',this.value)" /></div>
-                    <div class="input-field"><label>Wt (t)</label><input type="number" step="0.1" value="${c.wt}" onchange="updateRow(${i},'wt',this.value)" /></div>
+                    <div class="input-field"><label>L (m)</label><input type="number" step="0.1" value="${c.L}" oninput="updateRow(${i},'L',this.value)" /></div>
+                    <div class="input-field"><label>W (m)</label><input type="number" step="0.1" value="${c.W}" oninput="updateRow(${i},'W',this.value)" /></div>
+                    <div class="input-field"><label>H (m)</label><input type="number" step="0.1" value="${c.H}" oninput="updateRow(${i},'H',this.value)" /></div>
+                    <div class="input-field"><label>Wt (t)</label><input type="number" step="0.1" value="${c.wt}" oninput="updateRow(${i},'wt',this.value)" /></div>
                     <div class="cargo-actions">
                         <button class="btn-act" onclick="addCargoRow(${i})" title="Add Item Below">+</button>
                         <button class="btn-act" onclick="removeCargoRow(${i})" title="Delete Item">-</button>
-                        <input type="color" class="row-color" value="${c.color || '#92400e'}" onchange="updateColor(${i}, this.value)" title="Change Color" />
+                        <input type="color" class="row-color" value="${c.color || '#92400e'}" oninput="updateColor(${i}, this.value)" title="Change Color" />
                     </div>
                 `;
                 cont.appendChild(div);
@@ -2259,14 +2274,32 @@
             document.getElementById('s-fr').textContent = `${LInfo.frCount} Units`;
             document.getElementById('s-kill').textContent = `${LInfo.totalTEU} TEU`;
 
+            // Sync bed thickness & slot height inputs
+            const elBed = document.getElementById('frBedH');
+            if (elBed && !isNaN(parseFloat(elBed.value))) {
+                state.frBedH = parseFloat(elBed.value);
+            } else {
+                state.frBedH = 0.70;
+            }
+            const elSlot = document.getElementById('slotH');
+            if (elSlot && !isNaN(parseFloat(elSlot.value))) {
+                state.slotH = parseFloat(elSlot.value);
+            } else {
+                state.slotH = 2.89;
+            }
+            FR_BED_H = state.frBedH;
+
             // Max Total Height display
             const timberH_ui = state.isTimber ? 0.2 : 0.0;
             const bbkH_ui = LInfo.bbkArrH;
-            const totalMaxH = bbkH_ui + FR_BED_H + timberH_ui;
+            const totalBedH_ui = state.isSandwich ? (2 * FR_BED_H) : FR_BED_H;
+            const totalMaxH = bbkH_ui + totalBedH_ui + timberH_ui;
             const sBbkH = document.getElementById('s-bbk-h');
+            const sBedH = document.getElementById('s-bed-h');
             const sTimberH = document.getElementById('s-timber-h');
             const sTotalH = document.getElementById('s-total-h');
             if (sBbkH) sBbkH.textContent = `${bbkH_ui.toFixed(2)} m`;
+            if (sBedH) sBedH.textContent = `+ ${totalBedH_ui.toFixed(2)} m${state.isSandwich ? ' (x2)' : ''}`;
             if (sTimberH) sTimberH.textContent = timberH_ui > 0 ? `+ ${timberH_ui.toFixed(2)} m` : `+ 0.00 m`;
             if (sTotalH) sTotalH.textContent = `${totalMaxH.toFixed(2)} m`;
 
@@ -2367,7 +2400,12 @@
                 const minSx = Math.floor(c_minX / FR_SPEC.L + 0.5 + 0.001);
                 const maxSx = Math.floor(c_maxX / FR_SPEC.L + 0.5 - 0.001);
 
-                const tiers = Math.ceil(c.H / FR_SPEC.H);
+                const FR_BED_H_calc = state.frBedH !== undefined ? state.frBedH : 0.70;
+                const SLOT_H_calc = state.slotH !== undefined ? state.slotH : 2.89;
+                const timberH_calc = state.isTimber ? 0.2 : 0.0;
+                const totalBedH_calc = state.isSandwich ? (2 * FR_BED_H_calc) : FR_BED_H_calc;
+                const totalCargoTopY = totalBedH_calc + timberH_calc + c.H;
+                const tiers = Math.max(1, Math.ceil(totalCargoTopY / SLOT_H_calc));
 
                 const minSz = Math.floor(c_minZ / FR_SPEC.W + (frCount - 1) / 2 + 0.5 + 0.001);
                 const maxSz = Math.floor(c_maxZ / FR_SPEC.W + (frCount - 1) / 2 + 0.5 - 0.001);
@@ -2788,9 +2826,9 @@
                     sEdges.position.copy(sMesh.position);
                     grp.add(sEdges);
 
-                    // H: 0.70m label on Sandwich FR side faces — complementary of green = Magenta/Pink
-                    addLabel("H: 0.70m", new THREE.Vector3(0, -BASE_H / 2, z + FR_SPEC.W / 2 + 0.01), '#e11d48', 0.35, true, new THREE.Euler(0, 0, 0));
-                    addLabel("H: 0.70m", new THREE.Vector3(0, -BASE_H / 2, z - FR_SPEC.W / 2 - 0.01), '#e11d48', 0.35, true, new THREE.Euler(0, Math.PI, 0));
+                    // H label on Sandwich FR side faces
+                    addLabel(`H: ${BASE_H.toFixed(2)}m`, new THREE.Vector3(0, -BASE_H / 2, z + FR_SPEC.W / 2 + 0.01), '#e11d48', 0.35, true, new THREE.Euler(0, 0, 0));
+                    addLabel(`H: ${BASE_H.toFixed(2)}m`, new THREE.Vector3(0, -BASE_H / 2, z - FR_SPEC.W / 2 - 0.01), '#e11d48', 0.35, true, new THREE.Euler(0, Math.PI, 0));
                 }
 
                 // 40FR number labels
@@ -2800,17 +2838,19 @@
                 const labelPosRight = new THREE.Vector3(FR_SPEC.L / 2 + 0.8, BASE_H + 0.02 + i * 0.001, z);
                 addLabel(`40FR #${L.frCount - i}`, labelPosRight, '#ffffff', 0.56, true, rotH);
 
-                // H: 0.70m label on top FR side faces — complementary of red = Cyan
-                addLabel("H: 0.70m", new THREE.Vector3(0, BASE_H / 2, z + FR_SPEC.W / 2 + 0.01), '#06b6d4', 0.35, true, new THREE.Euler(0, 0, 0));
-                addLabel("H: 0.70m", new THREE.Vector3(0, BASE_H / 2, z - FR_SPEC.W / 2 - 0.01), '#06b6d4', 0.35, true, new THREE.Euler(0, Math.PI, 0));
+                // H label on top FR side faces
+                addLabel(`H: ${BASE_H.toFixed(2)}m`, new THREE.Vector3(0, BASE_H / 2, z + FR_SPEC.W / 2 + 0.01), '#06b6d4', 0.35, true, new THREE.Euler(0, 0, 0));
+                addLabel(`H: ${BASE_H.toFixed(2)}m`, new THREE.Vector3(0, BASE_H / 2, z - FR_SPEC.W / 2 - 0.01), '#06b6d4', 0.35, true, new THREE.Euler(0, Math.PI, 0));
             }
 
             // Slot Kills
             slotKillMeshes = [];
             slotKillEdges = [];
+            const SLOT_H_3d = state.slotH !== undefined ? state.slotH : 2.89;
+            const bottomY = state.isSandwich ? -BASE_H : 0;
 
             L.killedSlots.forEach(s => {
-                const geo = new THREE.BoxGeometry(FR_SPEC.L, FR_SPEC.H, FR_SPEC.W);
+                const geo = new THREE.BoxGeometry(FR_SPEC.L, SLOT_H_3d, FR_SPEC.W);
                 const mat = new THREE.MeshBasicMaterial({
                     color: state.skColor,
                     transparent: true,
@@ -2820,7 +2860,7 @@
                 });
                 const mesh = new THREE.Mesh(geo, mat);
                 const sx = s.x * FR_SPEC.L;
-                const sy = BASE_H + s.y * FR_SPEC.H + FR_SPEC.H / 2;
+                const sy = bottomY + s.y * SLOT_H_3d + SLOT_H_3d / 2;
                 const sz = (s.z - (L.frCount - 1) / 2) * FR_SPEC.W;
                 mesh.position.set(sx, sy, sz);
                 grp.add(mesh);
@@ -2918,9 +2958,11 @@
             const labelCol = '#10b981';
             const midY = BASE_H + 0.5;
 
-
-            const tiers3D = Math.ceil(L.bbkArrH / FR_SPEC.H);
-            const slotCeiling = BASE_H + tiers3D * FR_SPEC.H;
+            const totalBedH = state.isSandwich ? (2 * BASE_H) : BASE_H;
+            const SLOT_H_ceil = state.slotH !== undefined ? state.slotH : 2.89;
+            const totalCargoTopY = totalBedH + timberH + L.bbkArrH;
+            const tiers3D = Math.max(1, Math.ceil(totalCargoTopY / SLOT_H_ceil));
+            const slotCeiling = bottomY + tiers3D * SLOT_H_ceil;
 
             L.cargos.forEach((c, idx) => {
                 const cL = L.orient === 'along' ? c.L : c.W;
@@ -4842,7 +4884,7 @@
                 const t = {
                     en: {
                         title: "ADVANCED TECHNICAL MANUAL & GUIDE",
-                        sub: "G.GAIN SOLUTION | BBK DIGITAL TWIN ENGINE V1.3",
+                        sub: "MSC | BBK DIGITAL TWIN ENGINE V1.3",
                         intro: "This documentation explores the core physics engine and logic of the BBK Stowage Planner, documenting all interface controls and calculation standards.",
                         sec1: "INTERFACE & CORE FEATURES",
                         features: [
@@ -4863,7 +4905,7 @@
                     },
                     kr: {
                         title: "고급 기술 매뉴얼 및 가이드",
-                        sub: "G.GAIN SOLUTION | BBK 디지털 트윈 ENGINE V1.3",
+                        sub: "MSC | BBK 디지털 트윈 ENGINE V1.3",
                         intro: "본 매뉴얼은 BBK Stowage Planner의 핵심 물리 엔진 및 로직, 모든 인터페이스 제어 요소와 계산 표준에 대해 상세히 설명합니다.",
                         sec1: "인터페이스 통합 기능 안내",
                         features: [
@@ -4899,7 +4941,7 @@
                 const drawFooter = (page) => {
                     doc.setPage(page);
                     doc.setTextColor(150); doc.setFontSize(7);
-                    doc.text(`Page ${page} | TECHNICAL DOCUMENTATION | G.GAIN SOLUTION`, 105, 285, { align: 'center' });
+                    doc.text(`Page ${page} | TECHNICAL DOCUMENTATION | MSC`, 105, 285, { align: 'center' });
                     doc.text("Copyright © 2026 THE END - YS KIM. All Rights Reserved.", 105, 290, { align: 'center' });
                 };
 
@@ -5012,7 +5054,7 @@
             const drawHeader = () => {
                 doc.setFillColor(...secondary); doc.rect(0, 0, 210, 30, 'F');
                 doc.setTextColor(255); doc.setFontSize(22); doc.setFont("helvetica", "bold");
-                doc.text("Lashcon IMO: G.GAIN SOLUTION Stowage Report", 12, 18);
+                doc.text("Lashcon IMO: MSC Stowage Report", 12, 18);
                 doc.setDrawColor(59, 130, 246);
                 doc.line(10, 22, 200, 22);
                 doc.setFontSize(7); doc.setFont("helvetica", "normal");
